@@ -1,0 +1,130 @@
+{
+  "name": "AGE - Multi-Campaign Cycle Controller - Design Shell",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 60
+            }
+          ]
+        }
+      },
+      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac01",
+      "name": "Schedule - Every 60 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// INERT BY DESIGN. Integration contracts and provider capabilities are not yet verified.\\n// Do not replace this safety gate without completing docs/ESPOCRM_CHATWOOT_API_CONTRACT.md and acceptance tests.\\nreturn [{json:{mode:'DESIGN_ONLY',canSend:false,reason:'UNVERIFIED_API_ADAPTERS_AND_ATOMIC_LEDGER',workflow:'AGE - Multi-Campaign Cycle Controller - Design Shell',checkedAt:new Date().toISOString()}}];"
+      },
+      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac02",
+      "name": "Design Gate - Never Sends",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "gate",
+              "leftValue": "={{ $json.canSend }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      },
+      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac03",
+      "name": "LIVE Gate - Always False",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        770,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// This path records the design-only stop reason and DOES NOT mutate Chatwoot or EspoCRM.\\nreturn $input.all();"
+      },
+      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac04",
+      "name": "Halt Without Writes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1010,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule - Every 60 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Design Gate - Never Sends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Design Gate - Never Sends": {
+      "main": [
+        [
+          {
+            "node": "LIVE Gate - Always False",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LIVE Gate - Always False": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Halt Without Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
