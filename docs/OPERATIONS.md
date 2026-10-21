@@ -45,3 +45,12 @@ Alerts:
 - Use a review/approval workflow for changes involving live sends.
 - Deployment does not occur merely because GitHub content changes.
 - Never use production data in public examples; retain audit evidence under access controls and a suitable retention policy.
+
+## Native Chatwoot campaign batch operation (approved 2026-10-21)
+
+- Both importable n8n JSON files in `workflows/` are **DESIGN_ONLY** and cannot send. Do not simply toggle Active to obtain production functionality.
+- Scheduler may run hourly; no 45s per-message pacing check in this mode. Alert on overdue `lastVerifiedBatchCompletedAt + 26h`, but do not assume a new cycle should start if campaign hours or Meta portfolio usage block it.
+- Lock globally by Meta business portfolio; reserve all selected unique recipients before creating any batch. One cycle may launch several approved Chatwoot one-off campaigns, but next cycle waits 26h after the **latest verified batch completion**.
+- Track campaign status independently from message outcomes; campaign marked `completed` does not mean all recipients delivered. Reconcile `analytics/contacts` **all pages**, retry late updates and preserve exact provider codes when available.
+- Any unknown Chatwoot create outcome or mismatched label membership blocks automatic retry; do not blindly create a second batch. Reconcile from API/UI and audit evidence.
+- Existing legacy individual-message workflow must not be allowed to send to these same recipients concurrently. No Chatwoot source patch is permitted.
