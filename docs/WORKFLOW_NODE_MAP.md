@@ -15,7 +15,7 @@ This repository includes **importable, disabled-by-default orchestration shells*
 9. Poll campaign completion and only finalize global clock when all batches verified completed.
 
 ## Workflow 2: `workflows/age-chatwoot-campaign-reconciliation.json`
-`Schedule Trigger (60m)` → `Read-only Design Gate` → `Stop: adapter not configured`. Required adapter flow: list pending/recent batches; paginate Chatwoot analytics/contacts in 25s; join by Chatwoot contactId+batchId to EspoCRM recipient; validate status/error; idempotently upsert outcomes; poll late updates; calculate 131049 due on D0+8/18/28 and restricted-number 180d review. Reconcile report discrepancies and incomplete sessions before releasing a next cycle.
+`Schedule Trigger (60m)` → `Read-only Design Gate` → `Stop: adapter not configured`. Required adapter flow: list pending/recent batches; paginate Chatwoot analytics/contacts in 25s; join by Chatwoot contactId+batchId to EspoCRM recipient; validate status/error; idempotently upsert outcomes; poll late updates; calculate 131049 on 8/18/28 days after each preceding failure (current unchanged AGE extension), and restricted-number 180d review. Reconcile report discrepancies and incomplete sessions before releasing a next cycle.
 
 ## Why shells instead of fabricated production JSON?
 The repo currently describes **future-state CRM API operations**; it does not supply the installed AGE extension's actual audience/policy/atomic-reservation endpoints. Creating live-ready HTTP nodes with invented endpoints would either fail or risk unsafe sends. Gate remains inert until a versioned, exercised integration exists.
