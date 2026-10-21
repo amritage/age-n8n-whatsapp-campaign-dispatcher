@@ -14,3 +14,7 @@ This repository's purpose is to maintain **the approved future-state business be
 10. Never commit secrets, personal customer lists, credentials, private keys or unredacted webhook/event payloads.
 11. Keep changes limited to this repository unless separate authorization is granted; do not edit company-core, governance or EspoCRM repos implicitly.
 12. Use small reviewed commits; no force pushes or destructive history rewriting by default.
+
+## Approved 2026-10-21 architecture
+
+Read `docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md`, `docs/ESPOCRM_CHATWOOT_API_CONTRACT.md`, and `docs/WORKFLOW_NODE_MAP.md` before any workflow edit. Native Chatwoot one-off campaign creation is the selected sending mechanism. Do not modify Chatwoot source code, reintroduce 45-second per-message dispatch, or separate the Meta portfolio-wide 26h gap into per-campaign gaps. The only included importable n8n JSON files are deliberately inert shells; never describe them as production-ready. Preserve D0+8/18/28 for 131049 and suppression/review eligibility.
