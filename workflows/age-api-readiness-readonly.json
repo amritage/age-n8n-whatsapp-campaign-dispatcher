@@ -1,0 +1,196 @@
+{
+  "name": "AGE - EspoCRM and Chatwoot Readiness Probe - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveManualExecutions": false
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1001",
+      "name": "Manual Trigger - Read Only",
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Replace the FIVE non-secret placeholders in this node after import.\n// Bind TWO separate n8n Header Auth credentials to the EspoCRM / Chatwoot GET nodes.\n// This diagnostic workflow NEVER sends messages or edits existing systems.\nconst config={\n  espoUrl:'https://REPLACE_ESPO_HOST',\n  espoCampaignId:'REPLACE_ESPO_CAMPAIGN_ID',\n  chatwootUrl:'https://REPLACE_CHATWOOT_HOST',\n  chatwootAccountId:'REPLACE_CHATWOOT_ACCOUNT_ID',\n  chatwootCampaignId:'REPLACE_CHATWOOT_CAMPAIGN_ID',\n};\nif(Object.values(config).some(v=>!v || v.includes('REPLACE_'))) throw new Error('READ_ONLY_SETUP_REQUIRED: configure non-secret host/IDs; bind existing API Header Auth credentials');\nfor(const u of [config.espoUrl,config.chatwootUrl]) {\n const parsed=new URL(u);\n if(parsed.protocol!=='https:') throw new Error('HTTPS required');\n}\nreturn [{json:config}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1002",
+      "name": "Readiness Config - Fail Closed",
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Readiness Config - Fail Closed').first().json.espoUrl + '/api/v1/Campaign/' + encodeURIComponent($('Readiness Config - Fail Closed').first().json.espoCampaignId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1003",
+      "name": "GET Espo Campaign - Read Only",
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Readiness Config - Fail Closed').first().json.espoUrl + '/api/v1/AGECampaign/summary/' + encodeURIComponent($('Readiness Config - Fail Closed').first().json.espoCampaignId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1004",
+      "name": "GET Espo Campaign Summary - Read Only",
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Readiness Config - Fail Closed').first().json.chatwootUrl + '/api/v1/accounts/' + encodeURIComponent($('Readiness Config - Fail Closed').first().json.chatwootAccountId) + '/campaigns/' + encodeURIComponent($('Readiness Config - Fail Closed').first().json.chatwootCampaignId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1005",
+      "name": "GET Chatwoot Campaign - Read Only",
+      "position": [
+        1220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Readiness Config - Fail Closed').first().json.chatwootUrl + '/api/v1/accounts/' + encodeURIComponent($('Readiness Config - Fail Closed').first().json.chatwootAccountId) + '/campaigns/' + encodeURIComponent($('Readiness Config - Fail Closed').first().json.chatwootCampaignId) + '/analytics/metrics' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1006",
+      "name": "GET Chatwoot Analytics Metrics - Read Only",
+      "position": [
+        1480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Summarize availability without copying full CRM campaign/recipient records into the result.\nconst campaign=$('GET Espo Campaign - Read Only').first().json;\nconst summary=$('GET Espo Campaign Summary - Read Only').first().json;\nconst chatwoot=$('GET Chatwoot Campaign - Read Only').first().json;\nconst metrics=$('GET Chatwoot Analytics Metrics - Read Only').first().json;\nif(!campaign || !summary || !chatwoot || !metrics || typeof metrics!=='object') throw new Error('Incomplete read-only probe');\nreturn [{json:{\n    checkedAt:new Date().toISOString(),\n    mode:'READ_ONLY',\n    liveSendAttempted:false,\n    espoCampaignReadable:!!campaign.id,\n    espoSummaryReadable:true,\n    chatwootCampaignReadable:true,\n    chatwootMetricsReadable:true,\n    chatwootCampaignStatus:chatwoot.campaign_status ?? null,\n    chatwootAudienceCount:Number.isInteger(metrics.audience)?metrics.audience:null,\n    chatwootDeliveredCount:Number.isInteger(metrics.delivered)?metrics.delivered:null,\n    metaMessageIdAvailable:false,\n    crmRecipientEventSyncEnabled:false\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "c7fb22e0-1311-4159-9ddc-0bd9819d1007",
+      "name": "Read-only Summary - Counts Only",
+      "position": [
+        1740,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger - Read Only": {
+      "main": [
+        [
+          {
+            "node": "Readiness Config - Fail Closed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Readiness Config - Fail Closed": {
+      "main": [
+        [
+          {
+            "node": "GET Espo Campaign - Read Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Espo Campaign - Read Only": {
+      "main": [
+        [
+          {
+            "node": "GET Espo Campaign Summary - Read Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Espo Campaign Summary - Read Only": {
+      "main": [
+        [
+          {
+            "node": "GET Chatwoot Campaign - Read Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Chatwoot Campaign - Read Only": {
+      "main": [
+        [
+          {
+            "node": "GET Chatwoot Analytics Metrics - Read Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Chatwoot Analytics Metrics - Read Only": {
+      "main": [
+        [
+          {
+            "node": "Read-only Summary - Counts Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
