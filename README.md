@@ -76,3 +76,10 @@ The existing AGE Campaign Management v0.4.3 GitHub API source (not confirmed as 
 - Full synthetic tests run on GitHub Actions; [permanent result log](reports/TEST_LOG.md). Latest verified CI run: [39634948221](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634948221), PASS. No production messages sent or service credentials used.
 
 **Production blockers:** B-001 retry interval conflict is temporarily resolved by honoring the existing extension (installed version still to verify); B-002 immediate live attempt vs asynchronous native batch, B-003 missing provider identifiers in analytics, B-004 unknown complete portfolio rolling usage remain open. No old extension or workflow changed. The n8n workflow JSONs remain safe non-sending design shells until actual integrations can be tested.
+
+
+## Read-only n8n diagnostic (new, safe first integration step)
+
+`workflows/age-api-readiness-readonly.json` is an **inactive, manual-trigger, GET-only** diagnostic with four existing supported API checks: EspoCRM Campaign, AGE summary, Chatwoot campaign and Chatwoot aggregate campaign analytics. Fill non-secret host/account/campaign placeholders and bind separate EspoCRM `X-Api-Key` and Chatwoot `api_access_token` header-auth credentials **inside n8n**. Never commit or paste production secrets into GitHub. See [workflow map](docs/WORKFLOW_NODE_MAP.md). This diagnostic is not a live sender and its actual network execution is **unverified**.
+
+**Temporary retry decision:** use existing AGE Campaign Management's 131049 cooldown of 8, then 18, then 28 days after each preceding failure (theoretical D0+8/+26/+54). Preferred D0+8/+18/+28 from initial failure is deferred, not removed. The existing extension remains unchanged; see [decision and caveats](docs/RETRY_POLICY_TEMPORARY.md).
