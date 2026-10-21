@@ -99,3 +99,27 @@ This is a **future-state requirements specification**, not an account of which f
 **BR-072**: Support replay-safe processing after worker restart, duplicated triggers and partial outages. Operator recovery must be auditable and cannot create duplicate sends.
 
 **BR-073**: Maintain campaign-level and sender-level metrics, including delivered, failed by code, unknown, pending age, latency, pacing, hard-cap consumption, retries, suppression, circuit-breaker state and queue backlog.
+
+## 9. Approved 21 Oct 2026 Chatwoot-native batch mode (supersedes conflicting message-dispatch rules)
+
+**BR-080**: Multi-campaign n8n controller reads active, eligible EspoCRM campaigns hourly. Individual campaigns need not have separate n8n workflows. Each logical CRM campaign creates distinct Chatwoot **one-off** campaign batches for newly eligible, unsent and retry-due recipients; never resend whole AudienceSegment on change.
+
+**BR-081**: A global sending **cycle** can include multiple Chatwoot one-off campaign batches across different EspoCRM campaigns, while respecting their time/date/weekday/template/inbox/consent constraints. Capacity is guarded **once per Meta business portfolio**, not allocated separately per campaign. No duplicate canonical phone within the same cycle; preserve configured per-phone marketing gap.
+
+**BR-082**: Next global sending cycle is permitted no earlier than **26 hours from latest verified completion of every batch in the prior cycle**. Incomplete/unknown batches do not yield a guessed completion time. Controller runs every **60 minutes**; window/Sunday rules can delay actual send further.
+
+**BR-083**: Native Chatwoot controls *within-batch* speed. **Historical 45-second per-message pacing is removed from this mode**; BR-041 applies only to legacy individual-message dispatcher, which must not concurrently send same audience. No Chatwoot source edits.
+
+**BR-084**: Because native Chatwoot campaigns do not reliably auto-queue over-limit recipients for another day, n8n selects only an appropriately bounded set, marks the rest UNSENT in EspoCRM, and refreshes membership immediately before each future cycle.
+
+**BR-085**: 131049 retry schedule is **8, 18, 28 elapsed calendar days relative to first failure**, gated by consent, suppression, campaign inclusion, provider rules and next eligible cycle. Configured 180-day holds trigger policy **review**, never forced resend. Preserve raw codes/dates.
+
+**BR-086**: Individual results must return to EspoCRM; poll each Chatwoot analytics contacts page and re-poll late statuses. No LIVE if entitlement/response contract isn't verified. Missing underlying message IDs/timestamps from analytics are not invented.
+
+**BR-087**: Meta tier and remaining rolling usage cannot be inferred from daily attempts or the Chatwoot UI alone. Reserve defensively including external/manual portfolio senders. A 26-hour gap is not exact Meta remaining-capacity proof; unknown evidence blocks launch.
+
+**BR-088**: Master OFF or campaign inactive => DRY RUN without Chatwoot writes. All status, audience, global lock and suppression checks must be repeated before campaign creation; once Chatwoot starts its one-off batch, n8n cannot guarantee cancellation of individual in-flight sends.
+
+**BR-089**: The logical persistent EspoCRM campaign tracks `campaignId → cycles → Chatwoot batch campaign IDs → recipients → attempts`, including dropped membership and failed/retry records. Unknown creation responses must reconcile before repeating.
+
+Detailed requirements: [CHATWOOT_CAMPAIGN_ORCHESTRATION.md](CHATWOOT_CAMPAIGN_ORCHESTRATION.md).
