@@ -68,7 +68,7 @@ All T-01–T-34 cases relevant to a release must pass, including T-05, T-08, T-1
 | T-43 | 26h gap passed, other portfolio sender used capacity | Limit reservation reduces or blocks batch; no guessed 2,000 free |
 | T-44 | Chatwoot reports 26 pages of recipients (25/page) | Every page fetched; status/errors attributed exactly and idempotently |
 | T-45 | Analytics endpoint 403, not entitled or incomplete | No falsely marked delivered/failed; block next cycle where reconciliation required |
-| T-46 | 131049 initial failure; due on +8/+18/+28 days | No extra/out-of-policy retries; cancel due retries after deliver/opt-out |
+| T-46 | 131049 initial failure; existing policy due at +8, then +18 from preceding retry failure, then +28 from preceding retry failure | No early retries on D0+18 or +28; enforce CRM retry-policy API and stop on delivery/opt-out |
 | T-47 | 131026/130472 held 180 days, then review date arrives | Review eligibility; never auto-override provider restriction/consent |
 | T-48 | Change segment or master OFF after label sync but before campaign create | No Chatwoot campaign POST; audit/defer safely |
 | T-49 | Two overlapping schedule triggers at 60-minute interval | One global portfolio cycle reservation, no duplicate batches |
