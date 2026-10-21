@@ -73,3 +73,12 @@ All T-01–T-34 cases relevant to a release must pass, including T-05, T-08, T-1
 | T-48 | Change segment or master OFF after label sync but before campaign create | No Chatwoot campaign POST; audit/defer safely |
 | T-49 | Two overlapping schedule triggers at 60-minute interval | One global portfolio cycle reservation, no duplicate batches |
 | T-50 | New workflows imported without live adapter | No Chatwoot/CRM writes, no message sent |
+
+## Interim compatibility and probe checks
+
+| Test | Scenario | Pass criterion |
+|---|---|---|
+| T-51 | CRM existing 131049 policy, initial failure D0 | First retry earliest D0+8; if it fails immediately, later retries earliest D0+26 and D0+54; stale original-offset logic must not schedule earlier |
+| T-52 | CRM retry-policy missing, wrong recipient, or DENY | New dispatcher refuses send and logs reason; never bypasses old extension |
+| T-53 | Manual read-only API readiness workflow imported with placeholders | Cannot make network request until hosts/IDs and credentials configured; zero send/mutation endpoints |
+| T-54 | Authorized read-only health probe returns 403 from Chatwoot analytics | Fails readiness; no CRM/customer state changed |
