@@ -1,4 +1,6 @@
-# AGE — WhatsApp Campaign Dispatcher
+# AGE — WhatsApp Campaign Orchestrator (EspoCRM → n8n → Chatwoot)
+
+**Current approved direction (2026-10-21):** native Chatwoot v4.19.0 one-off WhatsApp campaign batches, multi-campaign EspoCRM coordination, one shared Meta-portfolio sending cycle and global **26-hour gap after the last verified batch completion**. Hourly scheduling and separate reconciliation. **No Chatwoot source changes, no 45-second individual pacing.** Implementation is design-stage, NOT deployed or cleared for LIVE. Read [the new architecture](docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md) before older dispatcher documents.
 
 **Purpose:** Authoritative, future-state specification for automated, compliant, auditable B2B WhatsApp campaigns for **Amrita Global Enterprises (AGE)**. It is not a declaration that the current n8n deployment already meets this specification.
 
@@ -10,7 +12,7 @@ Send relevant fabric updates and offers to eligible business buyers with predict
 
 - **EspoCRM** owns customers, canonical phone identities, active associations, audiences, consent/suppression, campaign configuration and recipient/attempt history.
 - **n8n** orchestrates scheduling, reservation, dispatch, reconciliation, alerts and operational retries. It does not become a second customer CRM.
-- **Official Meta WhatsApp Cloud API through the approved Chatwoot inbox** sends approved marketing templates; Chatwoot manages conversation and operator replies. Do not use WAHA existence checks or a QR/WhatsApp-Web gateway for official campaigns.
+- **Chatwoot native one-off campaign API** sends approved WhatsApp templates in its own batches; n8n creates unique batch labels/campaigns. The native campaign engine does not automatically persist pending unsent audiences across days; EspoCRM owns the queue. Do not use WAHA existence checks or a QR/WhatsApp-Web gateway for official campaigns.
 - **Event ingestion/reconciliation** records provider outcomes to EspoCRM. A successful Chatwoot POST means *submitted*, never *delivered*.
 
 ## Core principles
@@ -20,7 +22,7 @@ Send relevant fabric updates and offers to eligible business buyers with predict
 3. Missing/ambiguous consent, identifiers, policy responses, budget evidence or provider identity **fail closed**.
 4. **Active campaign + master sending enabled** is required for LIVE; otherwise provide a read-only DRY RUN or status preview. Emergency stop is immediate.
 5. The business daily target measures **actual delivered messages**. Reserve places for pending/unknown submissions; verified failures release places, but a separate hard attempt/cost guard prevents unlimited failed traffic.
-6. A global, atomic sender-level budget and message-spacing gate govern **all campaigns sharing the sending number**.
+6. A global, atomic **Meta portfolio-level** capacity/cycle gate governs all campaigns sharing the portfolio; **26h between cycles**, not between constituent campaigns. No n8n per-message pacing.
 7. Preserve original Meta error codes and event timestamps; do not label 131026 as “Not Registered.”
 8. Do not blindly retry an ambiguous submission. Recover from a durable outbox/ledger with evidence and idempotency.
 9. Consent opt-out always overrides any six-month retry preference. Adhere to Meta requirements and applicable law.
@@ -30,6 +32,10 @@ Send relevant fabric updates and offers to eligible business buyers with predict
 
 | Path | What it defines |
 | --- | --- |
+| [docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md](docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md) | Approved native-Chatwoot multi-campaign cycle design and verified v4.19 findings |
+| [docs/ESPOCRM_CHATWOOT_API_CONTRACT.md](docs/ESPOCRM_CHATWOOT_API_CONTRACT.md) | Proposed integration API and ledger boundaries; unverified live adapters |
+| [docs/CAMPAIGN_SCENARIOS.md](docs/CAMPAIGN_SCENARIOS.md) | 4200→4150→4500, shared capacity, 131049 8/18/28, 180-day hold examples |
+| [docs/WORKFLOW_NODE_MAP.md](docs/WORKFLOW_NODE_MAP.md) | Node map and safety status of importable n8n shells |
 | [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md) | Campaign, audience, eligibility, calendar, quota, retry and outcome business rules |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Ownership boundaries, end-to-end flows and integration contracts |
 | [docs/DATA_MODEL.md](docs/DATA_MODEL.md) | Canonical entities, event semantics, field and state contracts |
@@ -49,3 +55,10 @@ Send relevant fabric updates and offers to eligible business buyers with predict
 - Changes to LIVE eligibility, consent, retry, budgeting or sending require review and dry-run testing before deployment.
 
 **Important:** The previously supplied “AGE — EspoCRM WhatsApp Campaign Dispatcher v4 — Production” JSON was examined to understand legacy behavior and gaps, but intentionally is **not** declared the target architecture or included here as a production workflow. This repository defines what the system **should** do.
+
+## Current implementation in this repo
+
+- `src/cycle-planner.js`: pure-JavaScript fail-closed multi-campaign allocation planner; run `node tests/cycle-planner.test.js` locally.
+- `tests/cycle-planner.test.js`: baseline safety, dedupe, weekday and 26-hour tests.
+- `workflows/age-multi-campaign-cycle-controller.json` and `workflows/age-chatwoot-campaign-reconciliation.json`: **importable but inert** n8n shells, not production integration. No HTTP nodes, secrets, sends, or automated contact mutations are active.
+- Missing for LIVE: actual EspoCRM adapter implementation, safe atomic ledger, Meta usage evidence, Chatwoot template/label/API integration, reconciliation and tested alerting. **Never enable LIVE merely from these files.**
