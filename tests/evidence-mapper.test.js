@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {eventFromDb}=require('../src/evidence-mapper');
+const row={chatwoot_contact_id:12,chatwoot_inbox_id:5,chatwoot_campaign_internal_id:601,provider_message_id_candidate:'wamid.HBgM123456789',sent_at:'2026-10-21T07:00:00Z',delivered_at:'2026-10-21T07:00:07Z',read_at:'2026-10-21T08:00:00Z',failed_at:'2026-10-21T09:00:00Z',error_code:'131049',error_message:'engagement'};
+const link={chatwootContactId:12,chatwootInboxId:5,chatwootCampaignInternalId:601,chatwootCampaignDisplayId:100,espoRecipientId:'espo-recipient-1',ageAttemptId:'age-attempt-1',providerSourceIdConfirmedMetaWamid:true};
+const d=eventFromDb(row,link,'delivered');
+assert.equal(d.type,'delivered');assert.equal(d.messageId,row.provider_message_id_candidate);
+assert.equal(d.occurredAt,'2026-10-21T07:00:07.000Z');assert.equal(d.eventId,eventFromDb(row,link,'delivered').eventId);
+assert.equal(eventFromDb(row,link,'failed').details.errorCode,'131049');
+assert.throws(()=>eventFromDb({...row,provider_message_id_candidate:null},link,'sent'),/absent/);
+assert.throws(()=>eventFromDb(row,{...link,chatwootContactId:999},'delivered'),/mismatch/);
+assert.throws(()=>eventFromDb({...row,delivered_at:null},link,'delivered'),/timestamp/);
+assert.throws(()=>eventFromDb(row,{...link,providerSourceIdConfirmedMetaWamid:false},'sent'),/absent/);
+assert.throws(()=>eventFromDb({...row,error_code:null},link,'failed'),/error code/);
+console.log('PASS: read-only DB evidence maps to deterministic CRM events ONLY with verified IDs/time/mapping');
