@@ -36,6 +36,8 @@ jobs:
         run: node tests/evidence-mapper.test.js
       - name: Check real EspoCRM field mapping and guarded Chatwoot payload
         run: node tests/campaign-contract.test.js
+      - name: Validate manual read-only EspoCRM and Chatwoot probe
+        run: node tests/readiness-workflow.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
