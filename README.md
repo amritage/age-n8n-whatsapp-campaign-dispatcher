@@ -34,7 +34,8 @@ Send relevant fabric updates and offers to eligible business buyers with predict
 | --- | --- |
 | [docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md](docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md) | Approved native-Chatwoot multi-campaign cycle design and verified v4.19 findings |
 | [docs/ESPOCRM_CHATWOOT_API_CONTRACT.md](docs/ESPOCRM_CHATWOOT_API_CONTRACT.md) | Proposed integration API and ledger boundaries; unverified live adapters |
-| [docs/CAMPAIGN_SCENARIOS.md](docs/CAMPAIGN_SCENARIOS.md) | 4200→4150→4500, shared capacity, 131049 8/18/28, 180-day hold examples |
+| [docs/CAMPAIGN_SCENARIOS.md](docs/CAMPAIGN_SCENARIOS.md) | 4200→4150→4500, shared capacity, current 131049 timing and 180-day hold examples |
+| [docs/RETRY_POLICY_TEMPORARY.md](docs/RETRY_POLICY_TEMPORARY.md) | Current existing-extension 131049 schedule and deferred initial-failure preference |
 | [docs/WORKFLOW_NODE_MAP.md](docs/WORKFLOW_NODE_MAP.md) | Node map and safety status of importable n8n shells |
 | [docs/BUSINESS_RULES.md](docs/BUSINESS_RULES.md) | Campaign, audience, eligibility, calendar, quota, retry and outcome business rules |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Ownership boundaries, end-to-end flows and integration contracts |
@@ -71,7 +72,7 @@ The existing AGE Campaign Management v0.4.3 GitHub API source (not confirmed as 
 - Existing campaign field translation and *guarded* Chatwoot native campaign JSON: `src/campaign-contract.js`; no network write implemented.
 - Chatwoot analytics pagination and normalized status-only evidence: `src/chatwoot-analytics.js`.
 - Chatwoot PostgreSQL **read-only** evidence extraction: `sql/chatwoot-campaign-recipient-evidence-readonly.sql`, with strict `wamid` and mapping validation in `src/evidence-mapper.js`. Not deployed; database source semantics need installed-instance validation.
-- Original-failure retry policy (D0+8/18/28) with fail-closed compatibility gate: `src/retry-policy.js`. The old extension's current policy is **not** modified or bypassed.
+- **Temporary compatible retry policy** (8/18/28 days after each preceding 131049 failure) with a fail-closed CRM policy gate: `src/retry-policy.js`. This matches the reviewed v0.4.3 extension without modifying or bypassing it. The preferred initial-failure-offset plan is deferred.
 - Full synthetic tests run on GitHub Actions; [permanent result log](reports/TEST_LOG.md). Latest verified CI run: [39634948221](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634948221), PASS. No production messages sent or service credentials used.
 
-**Production blockers:** B-001 retry interval conflict with the existing extension, B-002 immediate live attempt vs asynchronous native batch, B-003 missing provider identifiers in analytics, B-004 unknown complete portfolio rolling usage. No old extension or workflow changed. The n8n workflow JSONs remain safe non-sending design shells until actual integrations can be tested.
+**Production blockers:** B-001 retry interval conflict is temporarily resolved by honoring the existing extension (installed version still to verify); B-002 immediate live attempt vs asynchronous native batch, B-003 missing provider identifiers in analytics, B-004 unknown complete portfolio rolling usage remain open. No old extension or workflow changed. The n8n workflow JSONs remain safe non-sending design shells until actual integrations can be tested.
