@@ -1,0 +1,13 @@
+# Local n8n backups and unreviewed exports
+*.local.json
+*.secrets.json
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc
+data/private/
+backups/
