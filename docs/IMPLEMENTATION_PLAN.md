@@ -1,4 +1,6 @@
-# Implementation plan — focus on target behavior
+# Implementation plan — approved Chatwoot-native multi-campaign mode
+
+**Approved architecture (21 Oct 2026):** see [CHATWOOT_CAMPAIGN_ORCHESTRATION.md](CHATWOOT_CAMPAIGN_ORCHESTRATION.md). Historical steps calling for n8n per-recipient Chatwoot POST or sender-wide 45-second per-message pacing are **legacy-only**, not the selected integration. Replace those with native Chatwoot one-off campaign creation and per-cycle 26-hour locking.
 
 ## Phase A: decisions and contracts (Tier 1)
 
@@ -14,8 +16,8 @@
 1. Deterministic due queue with cursor, lease and per-phone deduplication.
 2. Candidate-context-safe processing with scoped policy decisions and fail-closed error handling.
 3. Preflight: Active/master, opt-in, suppression, associations, frequency, template, time, provider safety.
-4. Global sender slot claim + hard attempt/cost guard + atomic pacing.
-5. Verify Chatwoot contact-inbox recipient identity and submit exactly once.
+4. Atomic **Meta portfolio-wide cycle reservation**, capacity safety guard, hard attempt/spend ceiling and **26-hour gap after last verified batch completion**; do not apply individual-message pacing.
+5. Verify Chatwoot contact identities, batch label membership and one-off campaign creation **exactly once per batch**.
 6. Durable outbox and reconciliation for Reserved/Unknown/Submitted states.
 
 **Exit:** T-01–T-23 pass.
@@ -40,3 +42,10 @@
 ## Dependencies
 
 The dispatcher alone is insufficient to implement all target behavior. The EspoCRM extension, canonical Communication Sync, event ingestion/reconciliation workflows and selected atomic budget service need coordinated changes. Track each dependency separately; do **not** misrepresent the dispatcher repository as containing all of those systems.
+
+## Concrete new implementation artifacts
+
+- Pure planner: `src/cycle-planner.js`; unit tests `tests/cycle-planner.test.js`.
+- Inert importable n8n scheduler/reconciler: `workflows/` (design shells only; require real API adapters and testing).
+- Contracts and flow: `docs/ESPOCRM_CHATWOOT_API_CONTRACT.md`, `docs/WORKFLOW_NODE_MAP.md`, `docs/CAMPAIGN_SCENARIOS.md`.
+- LIVE gap: no verified installed EspoCRM policy/claim endpoints, Meta capacity evidence, Chatwoot create/label tests, analytics entitlement or full transactional orchestration. Must implement these before deployment.
