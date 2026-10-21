@@ -15,17 +15,17 @@ Source repo: https://github.com/amritage/age-campaign-management
 - Audience segment and recipient entities: `CAGEAudienceSegment`, `CAGEAudienceSegmentMember`, `CAGECampaignRecipient`; native Campaign has `ageAudienceSegmentsIds`, `ageTemplateName`, `ageTemplateLanguage`, `ageParameters`, `ageInboxId`, `ageWindowStart/End`, `ageSundayOff`, `ageTimeZone`, `startDate/endDate`, `ageDailyLimit`, `ageMinGapDays`. Need inspect deployed metadata for all actual fields and mandatory attributes.
 - Segment recalculation and Campaign Refresh Segment & Enroll Now run in **native EspoCRM background jobs** (0.4.2/0.4.3). A request to refresh is not proof refresh completed; query job/result timestamps before using membership.
 
-## BLOCKER B-001: 131049 schedule does not match approved target
-- User-confirmed policy in dispatcher: retries at **D0+8, D0+18, D0+28**, where D0 is the original 131049 failure.
+## B-001: interim compatibility RESOLVED by using existing extension timing
+- The earlier preference was **D0+8, D0+18, D0+28** from the original 131049 failure, but the user has explicitly deferred that change. Current dispatcher follows the existing extension's preceding-failure hold.
 - Existing `WhatsAppPolicy.php` v0.4.3 increments failure count and computes `[8,18,28][failures-1]` days **after each respective failure event**, yielding approximately D0+8, D0+26, D0+54 if each occurs as soon as allowed.
-- Therefore, the existing `/AGECampaign/attempt` server-side gate may deny Day 18 and Day 28 submissions. n8n MUST NOT bypass or misreport that gate, regardless of dispatcher preference. The adapter should show `BLOCKED_BY_CRM_POLICY_CONFLICT`; leave unsent.
+- The new dispatcher must schedule the **existing** hold dates and always re-check `/AGECampaign/retry-policy/:recipientId`. There is no temporary policy mismatch to bypass; if the installed CRM denies an attempt, do not send. Verify installed version before claiming live parity. Desired first-failure offsets stay deferred.
 - No old-extension change authorized. Remedy requires a separately approved compatibility approach. Do not label the solution end-to-end production-ready until policies align.
 
 ## BLOCKER B-002: batch campaign create versus immediate CRM attempt semantics
 - Existing `/AGECampaign/attempt` requires an eligible reservation immediately before **individual** provider submission, and marks it Submitted upon reservation.
 - A Chatwoot native one-off campaign owns its own asynchronous internal 100-contact processing groups and may run longer than the timing assumptions of old individual-send dispatcher.
 - Need an evidence-backed procedure to correlate each committed CRM attempt to an actual Chatwoot campaign recipient without falsely recording unsent people as Submitted, including partial batches and campaign-start failures.
-- `mode:historical` is for importing past evidence, **not** a substitute for pre-send consent and policy authorization. Never use it to circumvent B-001.
+- `mode:historical` is for importing past evidence, **not** a substitute for pre-send consent and policy authorization. Never use it to circumvent the existing CRM's safety checks.
 
 ## BLOCKER B-003: individual analytics omit message event identities
 - Chatwoot v4.19 Enterprise `analytics/contacts` returns Chatwoot contact ID, status and error codes, **without Meta message ID and provider event timestamps**.
@@ -42,7 +42,7 @@ Source repo: https://github.com/amritage/age-campaign-management
 2. Verify the installed EspoCRM extension version and the Chatwoot `campaign_analytics` entitlement (especially for self-hosted).
 3. Obtain *read-only* Chatwoot DB access or authoritative Meta delivery webhook evidence for message IDs/timestamps, after opt-in and access review.
 4. Validate audience freshness, template parameter payload, deterministic label/recipient mapping and global portfolio usage.
-5. Resolve B-001 and B-002 through explicit design approval without altering any prior code by assumption. Only then build/enable actual campaign creation.
+5. Keep B-001 aligned to existing policy as an interim resolution; prioritize B-002 asynchronous campaign-vs-attempt accounting and B-003 message evidence. No existing extension edits.
 6. Run a controlled opted-in pilot after a separate, explicit live-send approval. Record every PASS/FAIL/blocked result in `reports/TEST_LOG.md`, and never store phone lists or API credentials in GitHub.
 
 ## Reference source
