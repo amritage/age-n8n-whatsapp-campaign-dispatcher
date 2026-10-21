@@ -11,7 +11,8 @@ This file tracks historical **observed** results and blockers. GitHub Actions al
 | 2026-10-21 | Chatwoot analytics to CRM event | BLOCKED | Analytics omit actual Meta message ID and event time needed by CRM event API | Verify read-only Chatwoot campaign_recipients DB query / Meta webhook |
 | 2026-10-21 | Portfolio rolling 24h remaining capacity | UNVERIFIED | 26h gap alone doesn't cover outside/manual senders | Obtain complete usage evidence |
 | 2026-10-21 | n8n importable workflow shells | DESIGNED / NOT LIVE | Inert by design; no HTTP or DB writes | Implement verified adapters in new repo |
-| 2026-10-21 | Node unit tests | PENDING CI | `node tests/cycle-planner.test.js`; `node tests/integration-contract.test.js`; `node tests/workflows-safety.test.js` | GitHub Actions results |
+| 2026-10-21 | Node unit tests and workflow safety | PASS (mocked) | GitHub Actions run [39634539986](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634539986), commit `0930864`: JS syntax; workflow safety; 26h planner; 131049 D0 offsets; all-pages analytics; guarded provider-message evidence; read-only API mocks | Repeat on integration changes |
+| 2026-10-21 | Initial CI workflow creation | FAIL (fixed) | Run [39634220083](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634220083) executed before the subsequent tests file was committed, causing module-not-found; later run [39634363532](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634363532) passed | Resolved: rerun after repository files completed |
 | 2026-10-21 | Live EspoCRM/Chatwoot read-only probe | NOT RUN | No installed-service credentials/known campaign IDs supplied to this session | Operator to supply secure read-only access |
 | 2026-10-21 | Real WhatsApp pilot | NOT RUN | No controlled live test authorized or environment access | Do not contact customers |
 
