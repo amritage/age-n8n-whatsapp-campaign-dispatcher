@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {readCampaign,buildChatwootCampaign}=require('../src/campaign-contract');
+const c={id:'crm-c-1',name:'INTROMAHA',status:'Active',ageChannel:'WhatsApp',ageProvider:'Chatwoot / Meta',ageInboxId:'5',ageTemplateName:'approved_age_intro',ageTemplateLanguage:'en',ageTimeZone:'Asia/Kolkata',ageWindowStart:'08:50',ageWindowEnd:'20:10',ageSundayOff:true,ageDailyLimit:2000,ageTrackingEnabled:true,ageMinGapDays:7,ageAudienceSegmentsIds:['a','b'],startDate:'2026-10-21',endDate:'2026-12-31'};
+const input={portfolioId:'waba-1',verifiedInboxIds:['5']};
+const got=readCampaign(c,input);
+assert.equal(got.maxPerCycle,2000);assert.equal(got.priority,0);assert.equal(got.allowedWeekdays.includes('Sun'),false);assert.equal(got.audienceSegmentIds.length,2);
+assert.throws(()=>readCampaign({...c,ageTemplateName:''},input),/Missing ageTemplateName/);
+assert.throws(()=>readCampaign(c,{portfolioId:'waba-1',verifiedInboxIds:['2']}),/allowlist/);
+assert.throws(()=>readCampaign({...c,ageSundayOff:null},input),/unknown/);
+const ok={authorizedAtomicReservation:true,memberCountVerified:true,templateApprovedVerified:true,title:'INTROMAHA-B001',message:'Approved template text',inboxId:'5',labelId:'38',scheduledAt:'2026-10-21T05:00:00Z',templateParams:{name:'confirmed-by-staging',language:'en'}};
+const payload=buildChatwootCampaign(ok);
+assert.deepEqual(payload.campaign.audience,[{type:'Label',id:38}]);assert.equal(payload.campaign.inbox_id,5);
+assert.throws(()=>buildChatwootCampaign({...ok,authorizedAtomicReservation:false}),/pre-send proof/);
+assert.throws(()=>buildChatwootCampaign({...ok,templateParams:null}),/Unverified/);
+console.log('PASS: existing EspoCRM field translation and gated native Chatwoot campaign payload');
