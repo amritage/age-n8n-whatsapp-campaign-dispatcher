@@ -1,0 +1,47 @@
+name: Dispatcher integration checks
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'workflows/**'
+      - '.github/workflows/dispatcher-ci.yml'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit-and-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout new dispatcher repository
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Javascript syntax
+        run: |
+          set -e
+          for file in src/*.js scripts/*.js tests/*.js; do node --check "$file"; done
+      - name: Verify safe workflow JSON
+        run: node tests/workflows-safety.test.js
+      - name: Check multi-campaign planner
+        run: node tests/cycle-planner.test.js
+      - name: Check 131049 schedule, analytics and read-only connectivity
+        run: node tests/integration-contract.test.js
+      - name: Preserve success/failure results in the GitHub Actions run
+        if: always()
+        run: |
+          {
+            echo "## AGE dispatcher CI"
+            echo ""
+            echo "Commit: `$GITHUB_SHA`"
+            echo "Result: **${{ job.status }}**"
+            echo ""
+            echo "This CI runs syntax, safety and mocked API unit tests only."
+            echo "No production credential is injected; no customer messaging is attempted."
+            echo "See logs of individual steps for failures. The deployment readiness register is `reports/TEST_LOG.md`."
+          } >> "$GITHUB_STEP_SUMMARY"
