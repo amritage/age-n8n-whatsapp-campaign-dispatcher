@@ -5,18 +5,29 @@ const {reducePages,mergeContactStatus,normalizedContact}=require('../src/chatwoo
 const {runProbe,requiredEnv}=require('../src/readiness-probe');
 const D='2026-10-01T10:00:00Z';
 function failure(at){return {errorCode:'131049',occurredAt:at};}
-const base={consentAllowed:true,suppressed:false,audienceMember:true,externalPolicyAllowed:true,delivered:false,read:false,optedOut:false,minGapDays:7,lastMarketingAttemptAt:D};
+function crm(retryAt=null,allowed=true){return {recipientId:'r1',errorPolicyAllowed:allowed,retryAt};}
+const base={recipientId:'r1',consentAllowed:true,suppressed:false,audienceMember:true,externalPolicyAllowed:true,delivered:false,read:false,optedOut:false,minGapDays:7,failuresCampaignScoped:true,lastMarketingAttemptAt:D,crmPolicy:crm()};
 let a=decision({...base,now:'2026-10-07T10:00:00Z',failures:[failure(D)]});
 assert.equal(a.eligible,false);assert.equal(a.nextReviewAt,'2026-10-09T10:00:00.000Z');
 a=decision({...base,now:'2026-10-09T10:00:00Z',failures:[failure(D)]});
 assert.equal(a.eligible,true);
-a=decision({...base,now:'2026-10-19T10:00:00Z',lastMarketingAttemptAt:'2026-10-09T10:00:00Z',failures:[failure(D),failure('2026-10-09T10:00:00Z')]});
-assert.equal(a.eligible,true); // 18 days from INITIAL, not 18 after Oct 9
-a=decision({...base,now:'2026-10-29T10:00:00Z',lastMarketingAttemptAt:'2026-10-19T10:00:00Z',failures:[failure(D),failure('2026-10-09T10:00:00Z'),failure('2026-10-19T10:00:00Z')]});
-assert.equal(a.eligible,true); // Day 28
-a=decision({...base,now:'2026-11-10T10:00:00Z',failures:[failure(D),failure('2026-10-09T10:00:00Z'),failure('2026-10-19T10:00:00Z'),failure('2026-10-29T10:00:00Z')]});assert.equal(a.eligible,false);
-a=decision({...base,now:'2026-10-29T10:00:00Z',optedOut:true,failures:[failure(D)]});assert.equal(a.eligible,false);
-a=decision({...base,now:'2026-10-29T10:00:00Z',externalPolicyAllowed:false,failures:[failure(D)]});assert.equal(a.eligible,false);
+// TEMPORARY existing extension behavior: second retry is 18 days after previous failure (D0+26).
+const two=[failure(D),failure('2026-10-09T10:00:00Z')];
+a=decision({...base,now:'2026-10-19T10:00:00Z',lastMarketingAttemptAt:'2026-10-09T10:00:00Z',failures:two,crmPolicy:crm('2026-10-27T10:00:00Z',false)});
+assert.equal(a.eligible,false);assert.equal(a.nextReviewAt,'2026-10-27T10:00:00.000Z');
+a=decision({...base,now:'2026-10-27T10:00:00Z',lastMarketingAttemptAt:'2026-10-09T10:00:00Z',failures:two});
+assert.equal(a.eligible,true);
+// Third retry: 28 days after second failed retry (D0+54).
+const three=[...two,failure('2026-10-27T10:00:00Z')];
+a=decision({...base,now:'2026-11-01T10:00:00Z',lastMarketingAttemptAt:'2026-10-27T10:00:00Z',failures:three});
+assert.equal(a.eligible,false);assert.equal(a.nextReviewAt,'2026-11-24T10:00:00.000Z');
+a=decision({...base,now:'2026-11-24T10:00:00Z',lastMarketingAttemptAt:'2026-10-27T10:00:00Z',failures:three});assert.equal(a.eligible,true);
+a=decision({...base,now:'2026-12-30T10:00:00Z',failures:[...three,failure('2026-11-24T10:00:00Z')]});assert.equal(a.eligible,false);
+a=decision({...base,now:'2026-11-24T10:00:00Z',optedOut:true,failures:[failure(D)]});assert.equal(a.eligible,false);
+a=decision({...base,now:'2026-11-24T10:00:00Z',crmPolicy:crm(null,false),failures:[failure(D)]});assert.equal(a.eligible,false);
+a=decision({...base,now:'2026-11-24T10:00:00Z',crmPolicy:null,failures:[failure(D)]});assert.equal(a.eligible,false);assert.equal(a.reason,'CRM_POLICY_EVIDENCE_MISSING');
+a=decision({...base,now:'2026-11-24T10:00:00Z',crmPolicy:{...crm(),recipientId:'r2'},failures:[failure(D)]});assert.equal(a.eligible,false);assert.equal(a.reason,'CRM_POLICY_RECIPIENT_MISMATCH');
+a=decision({...base,now:'2026-11-24T10:00:00Z',failuresCampaignScoped:false,failures:[failure(D)]});assert.equal(a.eligible,false);
 a=decision({...base,now:'2026-10-21T10:00:00Z',holdDays:180,failures:[{errorCode:'131026',occurredAt:D}]});assert.equal(a.action,'REVIEW');assert.equal(a.eligible,false);
 const row=(id,status)=>({contact:{id},status,error_code:status==='failed'?'131049':null});
 const payload=reducePages([{payload:[row(1,'read'),row(2,'failed')],meta:{current_page:1,total_pages:2,total_count:3}},{payload:[row(3,'sent')],meta:{current_page:2,total_pages:2,total_count:3}}]);
@@ -31,5 +42,5 @@ assert.equal(requiredEnv({}).ready,false);
  const res=await runProbe(vars,fn);
  assert(res.results.every(x=>x.status==='PASS'));assert(calls.every(x=>x.method==='GET'));assert.equal(res.liveSendAttempted,false);
  const empty=await runProbe({},fn);assert.equal(empty.results[0].status,'SKIP');
- console.log('PASS: 131049 D0 offsets, 180d review, consent gate, analytics pagination, safe read-only probe');
+ console.log('PASS: current CRM 131049 preceding-failure timing, future preference deferred; policy gates, 180d hold, analytics pages, safe GET probe');
 })().catch(e=>{console.error(e);process.exitCode=1;});
