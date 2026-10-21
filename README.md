@@ -62,3 +62,16 @@ Send relevant fabric updates and offers to eligible business buyers with predict
 - `tests/cycle-planner.test.js`: baseline safety, dedupe, weekday and 26-hour tests.
 - `workflows/age-multi-campaign-cycle-controller.json` and `workflows/age-chatwoot-campaign-reconciliation.json`: **importable but inert** n8n shells, not production integration. No HTTP nodes, secrets, sends, or automated contact mutations are active.
 - Missing for LIVE: actual EspoCRM adapter implementation, safe atomic ledger, Meta usage evidence, Chatwoot template/label/API integration, reconciliation and tested alerting. **Never enable LIVE merely from these files.**
+
+## 2026-10-21 read-only API integration progress
+
+The existing AGE Campaign Management v0.4.3 GitHub API source (not confirmed as the installed production version) was reviewed **without editing that repository**. The live attempt API and retry-policy incompatibilities are recorded in [Actual Extension Compatibility](docs/ACTUAL_EXTENSION_COMPATIBILITY.md). The user expressly prohibited modifying previous extensions and n8n workflows; these remain untouched.
+
+- Node API probe: `node scripts/run-readiness.js`. It makes only GET requests; missing environment setup yields SKIP, not PASS. Runtime configuration requires `AGE_ESPO_URL`, `AGE_ESPO_API_KEY`, `AGE_ESPO_CAMPAIGN_ID`, `AGE_CHATWOOT_URL`, `AGE_CHATWOOT_TOKEN`, `AGE_CHATWOOT_ACCOUNT_ID`, `AGE_CHATWOOT_CAMPAIGN_ID`. Use operator-controlled secure environment variables; **do not commit them**.
+- Existing campaign field translation and *guarded* Chatwoot native campaign JSON: `src/campaign-contract.js`; no network write implemented.
+- Chatwoot analytics pagination and normalized status-only evidence: `src/chatwoot-analytics.js`.
+- Chatwoot PostgreSQL **read-only** evidence extraction: `sql/chatwoot-campaign-recipient-evidence-readonly.sql`, with strict `wamid` and mapping validation in `src/evidence-mapper.js`. Not deployed; database source semantics need installed-instance validation.
+- Original-failure retry policy (D0+8/18/28) with fail-closed compatibility gate: `src/retry-policy.js`. The old extension's current policy is **not** modified or bypassed.
+- Full synthetic tests run on GitHub Actions; [permanent result log](reports/TEST_LOG.md). Latest verified CI run: [39634948221](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634948221), PASS. No production messages sent or service credentials used.
+
+**Production blockers:** B-001 retry interval conflict with the existing extension, B-002 immediate live attempt vs asynchronous native batch, B-003 missing provider identifiers in analytics, B-004 unknown complete portfolio rolling usage. No old extension or workflow changed. The n8n workflow JSONs remain safe non-sending design shells until actual integrations can be tested.
