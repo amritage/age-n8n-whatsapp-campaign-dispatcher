@@ -112,7 +112,7 @@ This is a **future-state requirements specification**, not an account of which f
 
 **BR-084**: Because native Chatwoot campaigns do not reliably auto-queue over-limit recipients for another day, n8n selects only an appropriately bounded set, marks the rest UNSENT in EspoCRM, and refreshes membership immediately before each future cycle.
 
-**BR-085**: 131049 retry schedule is **8, 18, 28 elapsed calendar days relative to first failure**, gated by consent, suppression, campaign inclusion, provider rules and next eligible cycle. Configured 180-day holds trigger policy **review**, never forced resend. Preserve raw codes/dates.
+**BR-085**: **Temporary 131049 timing** follows the unchanged AGE Campaign Management extension: **8, 18, 28 calendar days after each preceding failure**, with at most three retries, independently gated by current CRM retry-policy verdict, consent, suppression, campaign inclusion, provider rules and next eligible cycle. Earlier desired 8/18/28 days from first failure is deferred (see [policy](RETRY_POLICY_TEMPORARY.md)). Configured 180-day holds trigger **review**, never forced resend. Preserve raw codes/dates.
 
 **BR-086**: Individual results must return to EspoCRM; poll each Chatwoot analytics contacts page and re-poll late statuses. No LIVE if entitlement/response contract isn't verified. Missing underlying message IDs/timestamps from analytics are not invented.
 
