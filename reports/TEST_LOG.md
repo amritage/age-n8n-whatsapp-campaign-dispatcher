@@ -16,6 +16,8 @@ This file tracks historical **observed** results and blockers. GitHub Actions al
 | 2026-10-21 | Latest full mocked integration regression | PASS | [GitHub Actions run 39634948221](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39634948221): cycle planner, 131049 D0+8/18/28, analytics pagination, verified Meta evidence mapper, existing AGE campaign-field mapping, guarded Chatwoot payload and workflow non-sending safety | Keep CI enabled on future src/test/workflow changes |
 | 2026-10-21 | Live EspoCRM/Chatwoot read-only probe | NOT RUN | No installed-service credentials/known campaign IDs supplied to this session | Operator to supply secure read-only access |
 | 2026-10-21 | Real WhatsApp pilot | NOT RUN | No controlled live test authorized or environment access | Do not contact customers |
+| 2026-10-21 | Temporary 131049 compatibility decision | APPROVED / CODE UPDATED | Owner chose existing AGE extension rule (8/18/28 days after each preceding failure) instead of changing old extension for now; previous initial-failure schedule deferred | Verify actual installed version before live sending |
+| 2026-10-21 | Manual read-only n8n diagnostic workflow | CREATED / NOT RUN LIVE | `workflows/age-api-readiness-readonly.json`: four GET checks, manual trigger, fail-closed configuration placeholders, no API writes; safely tested statically by CI | Configure legitimate n8n Header Auth credentials and run manually in controlled environment |
 
 ### Recording convention
 - PASS = successfully exercised with stated evidence and scope; FAIL = tested and produced incorrect behavior; BLOCKED = cannot safely proceed; SKIP/NOT RUN = not attempted, **never count as PASS**.
