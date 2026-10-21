@@ -85,3 +85,9 @@ There is no distributed transaction spanning EspoCRM, n8n and Chatwoot. Use a du
 | Provider POST timeout | Unknown; evidence-based reconciliation |
 | Worker restart after reservation | Recover durable outbox without blind resubmit |
 | Opt-out after queue selection | Cancel before sending; persist suppression |
+
+## Approved replacement for legacy individual-message dispatch (2026-10-21)
+
+**Superseding implementation mode:** Native Chatwoot v4.19 one-off campaign batches; see `CHATWOOT_CAMPAIGN_ORCHESTRATION.md`. The earlier conceptual steps “conversation routing → one provider POST → individual-message 45-second pace” describe legacy architecture only and MUST NOT be implemented in the new batch flow. Now the transactional boundary is **portfolio cycle → one or more campaign batches → unique labels → one-time Chatwoot campaign API POST per batch**; the controller itself never issues per-recipient sends. Global cycle completion and independent reporting reconciliation are explicit. The 26h hold begins after *last verified* batch completion. The approved controller polls hourly; reconciler independently polls at up to hourly cadence. Chatwoot core cannot enforce per-contact interruption after a campaign begins; keep batch sizes conservative and recheck consent before release.
+
+Chatwoot analytics per-contact pagination exists in v4.19 enterprise code but may be feature-gated; without verified entitlement and satisfactory evidence do not launch. The proposed CRM adapter operations are documented separately and should not be treated as installed endpoints.
