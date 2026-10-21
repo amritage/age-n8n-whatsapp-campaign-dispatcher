@@ -59,7 +59,7 @@ Answers should update this file and the relevant BR clauses **before** modifying
 | D-13 | **Option B**: shared **26-hour gap between Meta-portfolio sending cycles**, multiple campaigns per cycle; clock starts after the last verified Chatwoot batch completion | Confirmed |
 | D-14 | Chatwoot native batch sending replaces historical **45-second individual pacing** for this architecture | Confirmed |
 | D-15 | Scheduler frequency **60 minutes**, reporting reconciler independently **30–60 minutes** (initial shell hourly) | Confirmed architecture |
-| D-16 | **131049** scheduled retries on **day 8, day 18, day 28 from first failure**, conditional on fresh eligibility; 180-day holds on applicable other codes are review dates, never unconditional send | Confirmed |
+| D-16 | **Temporary execution:** unchanged AGE Campaign Management retry hold for 131049 (8/18/28 days **after each preceding failure**; earliest D0+8/+26/+54). The earlier preference D0+8/+18/+28 from first failure is **deferred for later discussion**. 180-day holds remain review dates, never unconditional send. | Confirmed temporary 2026-10-21 |
 | D-17 | Keep all campaign dates, weekdays, timezone, windows, templates, audience selection, active/master state and recipient restrictions in EspoCRM | Confirmed |
 
 ### Still OPEN: deployment details, not discussion reversals
