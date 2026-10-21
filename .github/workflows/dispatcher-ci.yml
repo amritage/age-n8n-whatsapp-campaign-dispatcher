@@ -32,16 +32,15 @@ jobs:
         run: node tests/cycle-planner.test.js
       - name: Check 131049 schedule, analytics and read-only connectivity
         run: node tests/integration-contract.test.js
-      - name: Preserve success/failure results in the GitHub Actions run
+      - name: Record check results in GitHub Actions summary
         if: always()
         run: |
           {
-            echo "## AGE dispatcher CI"
-            echo ""
-            echo "Commit: `$GITHUB_SHA`"
-            echo "Result: **${{ job.status }}**"
-            echo ""
-            echo "This CI runs syntax, safety and mocked API unit tests only."
-            echo "No production credential is injected; no customer messaging is attempted."
-            echo "See logs of individual steps for failures. The deployment readiness register is `reports/TEST_LOG.md`."
+            echo '## AGE dispatcher automated checks'
+            echo
+            printf 'Commit: %s\n' "$GITHUB_SHA"
+            echo 'Job result: ${{ job.status }}'
+            echo
+            echo 'Synthetic unit tests only; no production credentials or customer sends.'
+            echo 'Details in each step. Long-term state: reports/TEST_LOG.md.'
           } >> "$GITHUB_STEP_SUMMARY"
