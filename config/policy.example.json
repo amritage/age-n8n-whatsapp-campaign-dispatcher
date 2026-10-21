@@ -1,0 +1,45 @@
+{
+  "_notice": "EXAMPLE ONLY — target shape, not confirmed live values. Numerical safeguards are proposals pending owner approval.",
+  "mode": {
+    "globalMasterSendingEnabled": false,
+    "dryRunUnlessActiveAndMaster": true
+  },
+  "timeZone": "Asia/Kolkata",
+  "window": {
+    "start": "08:50",
+    "end": "20:10",
+    "sundayOff": true
+  },
+  "sender": {
+    "dailyDeliveredTarget": 200,
+    "minimumSpacingSeconds": 45,
+    "hardAttemptLimit": null,
+    "maxSpendPerBusinessDay": null,
+    "atomicBudgetRequired": true
+  },
+  "recipient": {
+    "minMarketingGapDays": 7,
+    "requireVerifiedConsent": true,
+    "respectOptOut": true,
+    "dedupeByPhoneMaster": true,
+    "allowedCountries": [
+      "IN"
+    ]
+  },
+  "retry": {
+    "reviewAfterCalendarMonths": 6,
+    "neverOverrideOptOut": true,
+    "policyOwner": "EspoCRM extension",
+    "autoResendAfterReview": false
+  },
+  "delivery": {
+    "countSubmissionAsDelivered": false,
+    "unknownOutcomeRequiresEvidence": true,
+    "providerEventDeduplication": true
+  },
+  "risk": {
+    "onAmbiguousOrStalePolicy": "DENY",
+    "onMissingBudget": "DENY",
+    "onUnverifiedConversationIdentity": "DENY"
+  }
+}
