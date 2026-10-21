@@ -49,3 +49,21 @@
 **Q8 — Global ownership.** Which system implements atomic sender-budget claims: a purpose-built EspoCRM endpoint backed by MariaDB transactions or dedicated Postgres (already used alongside n8n)? **Default: dedicated authoritative transactional service; avoid dual budget masters.**
 
 Answers should update this file and the relevant BR clauses **before** modifying live workflow behavior.
+
+## Confirmed 21 Oct 2026: Chatwoot-native orchestration supersedes prior per-message pacing
+
+| ID | Decision | State |
+|---|---|---|
+| D-11 | Native Chatwoot v4.19 one-off campaign sends. **No Chatwoot code edits.** One EspoCRM logical campaign may generate many Chatwoot one-off batch campaigns | Confirmed design |
+| D-12 | One n8n multi-campaign coordinator, not one workflow per EspoCRM campaign; automatically sync unique labels, create Chatwoot campaigns, retrieve individual results | Confirmed target; API integration unverified |
+| D-13 | **Option B**: shared **26-hour gap between Meta-portfolio sending cycles**, multiple campaigns per cycle; clock starts after the last verified Chatwoot batch completion | Confirmed |
+| D-14 | Chatwoot native batch sending replaces historical **45-second individual pacing** for this architecture | Confirmed |
+| D-15 | Scheduler frequency **60 minutes**, reporting reconciler independently **30–60 minutes** (initial shell hourly) | Confirmed architecture |
+| D-16 | **131049** scheduled retries on **day 8, day 18, day 28 from first failure**, conditional on fresh eligibility; 180-day holds on applicable other codes are review dates, never unconditional send | Confirmed |
+| D-17 | Keep all campaign dates, weekdays, timezone, windows, templates, audience selection, active/master state and recipient restrictions in EspoCRM | Confirmed |
+
+### Still OPEN: deployment details, not discussion reversals
+- Exact installed EspoCRM API contract, atomic reservation implementation and portfolio-wide external-send usage evidence.
+- Exact Chatwoot v4.19 campaign template payload and self-hosted `campaign_analytics` entitlement.
+- Hard per-cycle attempt/spend ceiling, fairness priority, status reconciliation completeness, recovery from unknown Chatwoot POST.
+- Existing D-03 historical 45-second pacing, D-02 delivered-only daily target and P-01/P-02 must be interpreted for **Chatwoot batch** architecture: provider batch completion is asynchronous and cannot guarantee exact delivered-stop or per-message pace.
