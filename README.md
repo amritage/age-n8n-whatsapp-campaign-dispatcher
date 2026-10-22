@@ -6,6 +6,11 @@
 
 **Status:** Target design / requirements baseline. Implementation and live rollout require verification. All open choices are tracked in [the decision register](docs/DECISIONS.md).
 
+## Before importing into n8n (verified 2026-10-22)
+
+**Start with just the two manual, GET-only diagnostic workflows** documented in [N8N_IMPORT_AND_VALIDATION.md](docs/N8N_IMPORT_AND_VALIDATION.md). Their four-workflow package passed actual **n8n 2.37.9 CLI import**, but only the two read-only diagnostics are worth importing now. The multi-campaign controller and status-sync scheduler are intentionally non-sending design shells, **not a finished live dispatcher**. The two diagnostics need secure instance credentials and an existing Chatwoot campaign ID; no production API call has been run from this development session.
+
+
 ## Business outcome
 
 Send relevant fabric updates and offers to eligible business buyers with predictable pacing, reliable delivery accounting, and easy-to-audit records. Support contacts, leads, accounts, fabric manufacturers' buyers, trading firms, importers and exporters. A campaign must never be optimized for volume at the expense of customer preference, delivery quality, or accurate records.
