@@ -1,0 +1,192 @@
+{
+  "name": "AGE - Chatwoot Campaign Recipient Report - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0011",
+      "name": "Manual Only - Read Campaign Results",
+      "position": [
+        160,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fill NON-SECRET values only. Bind an n8n Header Auth credential to BOTH HTTP Request nodes.\n// No provider token or phone number may be put in this Code node / JSON export.\nconst config={\n  chatwootUrl:'https://REPLACE_CHATWOOT_HOST',\n  chatwootAccountId:'REPLACE_ACCOUNT_ID',\n  chatwootCampaignId:'REPLACE_CAMPAIGN_DISPLAY_ID',\n  maximumPages:500,\n};\nif(Object.values(config).some(v=>typeof v==='string'&&v.includes('REPLACE_')))throw new Error('READ_ONLY_SETUP_REQUIRED: fill non-secret Chatwoot host/account/campaign ID');\nconst host=new URL(config.chatwootUrl);\nif(host.protocol!=='https:')throw new Error('Remote Chatwoot must use HTTPS');\nfor(const name of ['chatwootAccountId','chatwootCampaignId']){\n if(!/^[1-9][0-9]*$/.test(String(config[name])))throw new Error('Invalid '+name);\n}\nreturn [{json:config}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0012",
+      "name": "Configure Read-only Chatwoot",
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Configure Read-only Chatwoot').first().json.chatwootUrl + '/api/v1/accounts/' + $('Configure Read-only Chatwoot').first().json.chatwootAccountId + '/campaigns/' + $('Configure Read-only Chatwoot').first().json.chatwootCampaignId + '/analytics/metrics' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0013",
+      "name": "GET Campaign Metrics",
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Configure Read-only Chatwoot').first().json.chatwootUrl + '/api/v1/accounts/' + $('Configure Read-only Chatwoot').first().json.chatwootAccountId + '/campaigns/' + $('Configure Read-only Chatwoot').first().json.chatwootCampaignId + '/analytics/contacts?page=1' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0014",
+      "name": "GET First Recipient Page",
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const page=$input.first().json;\nconst limit=$('Configure Read-only Chatwoot').first().json.maximumPages;\nconst count=page?.meta?.total_count;\nconst total=page?.meta?.total_pages;\nif(!Number.isInteger(count)||count<0||!Number.isInteger(total)||total<0||total>limit)throw new Error('Bad Chatwoot analytics metadata or page count exceeds safe limit');\nif(total===0&&(count!==0||page?.payload?.length!==0))throw new Error('Contradictory zero-page analytics response');\nif(total>0&&page.meta.current_page!==1)throw new Error('Incorrect first-page index');\nreturn Array.from({length:Math.max(total,1)},(_,i)=>({json:{page:i+1}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0015",
+      "name": "Enumerate All Pages - Guarded",
+      "position": [
+        1140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Configure Read-only Chatwoot').first().json.chatwootUrl + '/api/v1/accounts/' + $('Configure Read-only Chatwoot').first().json.chatwootAccountId + '/campaigns/' + $('Configure Read-only Chatwoot').first().json.chatwootCampaignId + '/analytics/contacts?page=' + $json.page }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0016",
+      "name": "GET All Recipient Pages - Read Only",
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Output only aggregate information: individual contacts, phone numbers, and message bodies\n// are deliberately not emitted from the workflow. No CRM/Chatwoot writes.\nconst metrics=$('GET Campaign Metrics').first().json;\nconst pages=$input.all().map(i=>i.json);\nconst byPage=new Map();\nfor(const page of pages){\n const pageNo=page?.meta?.current_page;\n if(!Number.isInteger(pageNo)||byPage.has(pageNo)||!Array.isArray(page.payload))throw new Error('Duplicate/invalid recipient page');\n byPage.set(pageNo,page);\n}\nconst first=byPage.get(1),total=first?.meta?.total_pages,count=first?.meta?.total_count;\nif(!Number.isInteger(total)||total<0||!Number.isInteger(count)||count<0||pages.length!==Math.max(1,total))throw new Error('Incomplete recipient pagination');\nif(total===0&&count!==0)throw new Error('Inconsistent zero-recipient metadata');\nconst counts={queued:0,skipped:0,sent:0,delivered:0,read:0,failed:0};\nconst codes={},seen=new Set();\nfor(let k=1;k<=Math.max(1,total);k++){\n const p=byPage.get(k);\n if(!p||p.meta.total_pages!==total||p.meta.total_count!==count)throw new Error('Metadata drift during pagination');\n for(const row of p.payload){\n  const cid=row?.contact?.id,status=row?.status;\n  if(!Number.isInteger(cid)||seen.has(cid)||!Object.hasOwn(counts,status))throw new Error('Invalid/duplicated recipient state');\n  seen.add(cid);counts[status]++;\n  if(status==='failed') {const code=row.error_code===null||row.error_code===undefined?'UNKNOWN':String(row.error_code);codes[code]=(codes[code]??0)+1;}\n }\n}\nif(seen.size!==count||metrics.audience!==count||metrics.delivered!==counts.delivered+counts.read||metrics.read!==counts.read||metrics.failed!==counts.failed||metrics.skipped!==counts.skipped)throw new Error('Contacts/metrics mismatch');\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',chatwootCampaignDisplayId:Number($('Configure Read-only Chatwoot').first().json.chatwootCampaignId),pagesFetched:pages.length,audience:count,counts,deliveredInclusiveOfRead:counts.delivered+counts.read,errorCodeCounts:codes,individualResultsObserved:count,crmEventWriteAuthorized:false,reason:'No verified Meta message IDs/event timestamps from this endpoint'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "8c62af3c-cad3-48de-b4da-e581c6bb0017",
+      "name": "Validate Pages and Report Safe Totals",
+      "position": [
+        1670,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Only - Read Campaign Results": {
+      "main": [
+        [
+          {
+            "node": "Configure Read-only Chatwoot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure Read-only Chatwoot": {
+      "main": [
+        [
+          {
+            "node": "GET Campaign Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Campaign Metrics": {
+      "main": [
+        [
+          {
+            "node": "GET First Recipient Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET First Recipient Page": {
+      "main": [
+        [
+          {
+            "node": "Enumerate All Pages - Guarded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enumerate All Pages - Guarded": {
+      "main": [
+        [
+          {
+            "node": "GET All Recipient Pages - Read Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET All Recipient Pages - Read Only": {
+      "main": [
+        [
+          {
+            "node": "Validate Pages and Report Safe Totals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
