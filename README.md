@@ -83,3 +83,14 @@ The existing AGE Campaign Management v0.4.3 GitHub API source (not confirmed as 
 `workflows/age-api-readiness-readonly.json` is an **inactive, manual-trigger, GET-only** diagnostic with four existing supported API checks: EspoCRM Campaign, AGE summary, Chatwoot campaign and Chatwoot aggregate campaign analytics. Fill non-secret host/account/campaign placeholders and bind separate EspoCRM `X-Api-Key` and Chatwoot `api_access_token` header-auth credentials **inside n8n**. Never commit or paste production secrets into GitHub. See [workflow map](docs/WORKFLOW_NODE_MAP.md). This diagnostic is not a live sender and its actual network execution is **unverified**.
 
 **Temporary retry decision:** use existing AGE Campaign Management's 131049 cooldown of 8, then 18, then 28 days after each preceding failure (theoretical D0+8/+26/+54). Preferred D0+8/+18/+28 from initial failure is deferred, not removed. The existing extension remains unchanged; see [decision and caveats](docs/RETRY_POLICY_TEMPORARY.md).
+
+
+## 2026-10-22 integration milestone
+
+**New executable read-only component:** `src/read-only-reconciliation.js` fetches paginated Chatwoot v4.19 Enterprise campaign contacts and campaign metrics over authenticated GET, checks complete page counts and metric consistency, and provides per-recipient *opaque-ID/status* projections without exporting phone numbers, names or message bodies. Its **API operation code** was exercised with mocked responses; no live account tokens used.
+
+**New importable manual n8n workflow:** `workflows/age-chatwoot-recipient-report-readonly.json` retrieves all 25-item analytics pages and reports individual status categories and failure-code counts. It has 3 GET nodes, no POST/write, no embedded API credential or hard-coded instance host, is inactive by default, and disables saving manual/error/success executions. It **does not** yet save any per-recipient record or update EspoCRM. See [reporting integration runbook](docs/REPORTING_IMPLEMENTATION.md).
+
+**New private Postgres staging schema:** `sql/reporting-staging.sql` provides recipient status rows and success/failure test-run audit, separate from Chatwoot and EspoCRM databases. Schema idempotence and synthetic recipient inserts **passed on a temporary PostgreSQL 16 CI database**, but the schema has not been applied to the production n8n database.
+
+**Evidence:** [GitHub Actions run 39751912969](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39751912969) PASS for both `unit-and-safety` and `postgres-report-schema` jobs. See [permanent test log](reports/TEST_LOG.md). **No live sending or existing extension/workflow changes.**
