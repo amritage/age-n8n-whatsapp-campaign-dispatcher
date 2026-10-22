@@ -2,7 +2,22 @@
 
 Status: import-verified on **n8n 2.37.9** in temporary GitHub Actions container; user production connection NOT tested; no send capability enabled.
 
-## Exactly what to import first
+## Preferred import path (updated 2026-10-22)
+
+**If your n8n installation already has the exact supported community packages, prefer:**
+
+1. [`workflows/age-api-readiness-native.json`](../workflows/age-api-readiness-native.json): **EspoCRM node Get Campaign** + **Chatwoot Get Campaign/Metrics** + **one HTTP GET** for custom `AGECampaign/summary/:id`.
+2. [`workflows/age-chatwoot-recipient-report-native.json`](../workflows/age-chatwoot-recipient-report-native.json): **Chatwoot Get Metrics and Get Recipients (Return All)**, zero HTTP nodes.
+
+Required exact packages and versions: **`@traien/n8n-nodes-espocrm@1.4.0`** and **`@renatoascencio/n8n-nodes-chatwoot@0.9.0`**. They are third-party community nodes, **not bundled** in n8n. Follow [the native-node setup and security guide](NATIVE_COMMUNITY_NODES.md) before attempting this import; importing an unknown node type into a plain n8n instance does not install that package.
+
+**If packages are not installed or you prefer to avoid third-party dependencies:** use the original two HTTP GET-only read-only diagnostics detailed below. Do not install a new package solely to replace a straightforward GET without reviewing maintenance/security implications.
+
+**Do not import the two inert scheduler shells expecting working sends.** All diagnostics use manual trigger, contain no send operations and remain disabled. Test using an existing Chatwoot campaign.
+
+---
+
+## Original portable HTTP GET-only fallback
 
 | Order | File | Purpose | Does it send? |
 |---|---|---|---|
