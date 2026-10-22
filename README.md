@@ -1,4 +1,12 @@
 
+## Independent operations audit — version and reporting caveats (2026-10-22)
+
+**Please read [the adversarial deployment audit](docs/RED_TEAM_AUDIT_2026-10-22.md) before enabling any automated sending.** It identifies 12 concrete risks, including an important possible version mismatch: the last confirmed Chatwoot deployment was **v4.17.1**; the proposed native Chatwoot 100-contact batch-worker design exists in inspected **v4.19.0** source, not the inspected v4.17.1 source. The installed server version has **not been verified today**. Do not assume v4.19-native batching is available or upgrade just to run a diagnostic.
+
+Read-only analytics exists in v4.17.1 enterprise code but requires the `whatsapp_campaign` feature; the v4.19.0 code uses different feature checks. Neither proves your particular self-hosted account has entitlement. If read-only analytics fails, report **BLOCKED**, not zero success or failure.
+
+`src/chatwoot-compatibility.js` is a conservative version capability gate with regression tests. It **never** authorizes live sends, and current workflows remain entirely diagnostic. Reporting samples five recent/processing campaigns per six-hour rotation and filters to failed recipients; this is **not exhaustive incremental durable delivery history**.
+
 ## Latest optimized diagnostics — replaces earlier six-hour/ID guidance (2026-10-22)
 
 Use the **current** [EspoCRM+Chatwoot auto-inventory](workflows/age-api-readiness-native.json) and [native Chatwoot health/error-code reporting](workflows/age-chatwoot-recipient-report-native.json). Both use community nodes already installed on the user's n8n and never require manual campaign IDs or HTTP nodes. The latter checks metrics and **failed recipients only**, rotates five recent WhatsApp one-off campaigns per six-hour window, handles unavailable enterprise analytics as BLOCKED, and never sends or writes CRM events. Import the **latest** files as new workflows to replace obsolete imported copies; **do not activate before manual testing**. [Optimized import instructions](docs/N8N_IMPORT_AND_VALIDATION.md).
