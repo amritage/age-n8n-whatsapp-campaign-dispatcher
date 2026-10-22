@@ -43,3 +43,10 @@ Retry calculation during the interim uses [the unchanged extension policy](RETRY
 A 7-node **manual, disabled**, **GET-only** n8n workflow based on Chatwoot v4.19.0 source. Reads metrics, first contacts page, enumerates all pages (max 500), downloads each page, validates unique contact IDs and complete statuses, and returns aggregate counts plus error-code frequency. Does **not** emit contact names/phones/message text in final output, import CRM events or write to any database. Execution saving disabled. Configure a dedicated Chatwoot Header Auth n8n credential and non-secret host/account/campaign display ID; use the new workflow, leaving all older workflows untouched. Import and actual account API testing are still pending.
 
 For durable individual reporting, `sql/reporting-staging.sql` is a **separate, proposed private n8n Postgres schema** tested using a synthetic PostgreSQL 16 GitHub Actions job. It is not migrated into production yet, and there is no Postgres write node in this manual workflow. Future approved storage must use parameterized SQL and an authoritative campaign-recipient ID mapping.
+
+## Workflows 5 and 6: preferred community-node-based read-only diagnostics
+
+- `workflows/age-api-readiness-native.json`: `Manual → Config Gate → EspoCRM Custom Entity:Get Campaign → one HTTP GET:AGECampaign/summary → Chatwoot Campaign:Get → Chatwoot Campaign:Get Metrics → safe summary`.
+- `workflows/age-chatwoot-recipient-report-native.json`: `Manual → Config Gate → Chatwoot Campaign:Get Metrics → Chatwoot Campaign:Get Recipients (Return All) → safe totals`. No HTTP or mutations. The Chatwoot community node internally paginates the Enterprise campaign analytics endpoint.
+
+See [NATIVE_COMMUNITY_NODES.md](NATIVE_COMMUNITY_NODES.md) for exact packages, versions, setup, credential assignments and risks. The HTTP-only originals remain available. No actual installed-instance tests or provider sends have been performed. The core multi-campaign sender is not ready for LIVE merely because the diagnostic nodes import successfully.
