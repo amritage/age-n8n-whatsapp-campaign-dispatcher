@@ -72,18 +72,35 @@ function plan(input) {
     if(Date.parse(x.dueAt)>now)continue;
     rows.push({...x,priority:campaigns.get(x.campaignId).priority});
   }
-  // More important campaign first; older due next; deterministic ID tie break.
-  rows.sort((a,b)=>b.priority-a.priority || Date.parse(a.dueAt)-Date.parse(b.dueAt) || a.campaignId.localeCompare(b.campaignId) || a.recipientId.localeCompare(b.recipientId));
+  // Deterministic per-campaign order, followed by fair round-robin allocation.
+  // The former global sort exhausted the highest-priority campaign before considering
+  // other campaigns, contradicting approved multi-campaign fairness.
+  rows.sort((a,b)=>Date.parse(a.dueAt)-Date.parse(b.dueAt) || a.recipientId.localeCompare(b.recipientId));
+  const groups=new Map();
+  for(const r of rows){if(!groups.has(r.campaignId))groups.set(r.campaignId,[]);groups.get(r.campaignId).push(r);}
+  const order=[...groups.keys()].sort((a,b)=>
+    campaigns.get(b).priority-campaigns.get(a).priority ||
+    Date.parse(groups.get(a)[0].dueAt)-Date.parse(groups.get(b)[0].dueAt) ||
+    a.localeCompare(b)
+  );
+  const pointers=new Map(order.map(id=>[id,0]));
   const selected=[],usedPhones=new Set(),counts=new Map();
-  for(const r of rows) {
-    if(selected.length>=capacity) break;
-    if(usedPhones.has(r.phoneMasterId)) continue;
-    const cap=campaigns.get(r.campaignId).maxPerCycle;
-    const n=counts.get(r.campaignId)||0;
-    if(n>=cap)continue;
-    selected.push({campaignId:r.campaignId,recipientId:r.recipientId,phoneMasterId:r.phoneMasterId,dueAt:r.dueAt});
-    usedPhones.add(r.phoneMasterId);
-    counts.set(r.campaignId,n+1);
+  while(selected.length<capacity){
+    let advanced=false;
+    for(const id of order){
+      if(selected.length>=capacity)break;
+      if((counts.get(id)||0)>=campaigns.get(id).maxPerCycle)continue;
+      const group=groups.get(id);
+      let pointer=pointers.get(id);
+      while(pointer<group.length && usedPhones.has(group[pointer].phoneMasterId))pointer++;
+      pointers.set(id,pointer);
+      if(pointer>=group.length)continue;
+      const r=group[pointer];
+      pointers.set(id,pointer+1);
+      selected.push({campaignId:r.campaignId,recipientId:r.recipientId,phoneMasterId:r.phoneMasterId,dueAt:r.dueAt});
+      usedPhones.add(r.phoneMasterId);counts.set(id,(counts.get(id)||0)+1);advanced=true;
+    }
+    if(!advanced)break;
   }
   return {portfolioId:input.portfolio.id,plannedAt:input.now,capacity,selected,allocation:[...counts.entries()].map(([campaignId,count])=>({campaignId,count})),requiresAtomicReserve:true};
 }
