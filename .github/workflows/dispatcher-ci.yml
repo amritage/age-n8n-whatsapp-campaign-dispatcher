@@ -42,6 +42,8 @@ jobs:
         run: node tests/read-only-reconciliation.test.js
       - name: Check n8n read-only recipient report safety
         run: node tests/recipient-report-workflow.test.js
+      - name: Check EspoCRM pagination and safe read-only campaign audit
+        run: node tests/espo-audit-readonly.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
@@ -116,7 +118,7 @@ jobs:
     steps:
       - name: Checkout workflow files
         uses: actions/checkout@v4
-      - name: Import three diagnostic and two inert workflows into disposable n8n 2.37.9
+      - name: Import all new diagnostic and inert workflows into disposable n8n 2.37.9
         run: |
           set -euo pipefail
           for workflow in workflows/*.json; do
@@ -129,4 +131,4 @@ jobs:
           done
       - name: Report import success
         if: success()
-        run: echo "All five workflows imported into disposable n8n 2.37.9 (not executed)." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "All repository workflows imported into disposable n8n 2.37.9 (not executed)." >> "$GITHUB_STEP_SUMMARY"
