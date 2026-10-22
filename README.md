@@ -1,3 +1,10 @@
+
+## Latest optimized diagnostics — replaces earlier six-hour/ID guidance (2026-10-22)
+
+Use the **current** [EspoCRM+Chatwoot auto-inventory](workflows/age-api-readiness-native.json) and [native Chatwoot health/error-code reporting](workflows/age-chatwoot-recipient-report-native.json). Both use community nodes already installed on the user's n8n and never require manual campaign IDs or HTTP nodes. The latter checks metrics and **failed recipients only**, rotates five recent WhatsApp one-off campaigns per six-hour window, handles unavailable enterprise analytics as BLOCKED, and never sends or writes CRM events. Import the **latest** files as new workflows to replace obsolete imported copies; **do not activate before manual testing**. [Optimized import instructions](docs/N8N_IMPORT_AND_VALIDATION.md).
+
+The older per-message live dispatcher and the eventual automatic multi-campaign Chatwoot creation/reconciliation are **not** replaced by these read-only diagnostics. Global 26h portfolio cycles and durable per-recipient CRM delivery history require separate fully integrated, verified modules before go-live.
+
 # AGE — WhatsApp Campaign Orchestrator (EspoCRM → n8n → Chatwoot)
 
 **Current approved direction (2026-10-21):** native Chatwoot v4.19.0 one-off WhatsApp campaign batches, multi-campaign EspoCRM coordination, one shared Meta-portfolio sending cycle and global **26-hour gap after the last verified batch completion**. Hourly scheduling and separate reconciliation. **No Chatwoot source changes, no 45-second individual pacing.** Implementation is design-stage, NOT deployed or cleared for LIVE. Read [the new architecture](docs/CHATWOOT_CAMPAIGN_ORCHESTRATION.md) before older dispatcher documents.
