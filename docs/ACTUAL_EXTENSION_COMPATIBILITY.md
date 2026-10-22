@@ -19,7 +19,7 @@ Source repo: https://github.com/amritage/age-campaign-management
 - The earlier preference was **D0+8, D0+18, D0+28** from the original 131049 failure, but the user has explicitly deferred that change. Current dispatcher follows the existing extension's preceding-failure hold.
 - Existing `WhatsAppPolicy.php` v0.4.3 increments failure count and computes `[8,18,28][failures-1]` days **after each respective failure event**, yielding approximately D0+8, D0+26, D0+54 if each occurs as soon as allowed.
 - The new dispatcher must schedule the **existing** hold dates and always re-check `/AGECampaign/retry-policy/:recipientId`. There is no temporary policy mismatch to bypass; if the installed CRM denies an attempt, do not send. Verify installed version before claiming live parity. Desired first-failure offsets stay deferred.
-- No old-extension change authorized. Remedy requires a separately approved compatibility approach. Do not label the solution end-to-end production-ready until policies align.
+- No old-extension change is authorized or necessary **for this interim policy**. Recheck the installed version at runtime. This policy decision does not resolve separate production blockers B-002/B-003/B-004.
 
 ## BLOCKER B-002: batch campaign create versus immediate CRM attempt semantics
 - Existing `/AGECampaign/attempt` requires an eligible reservation immediately before **individual** provider submission, and marks it Submitted upon reservation.
