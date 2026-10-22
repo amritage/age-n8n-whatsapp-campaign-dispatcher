@@ -60,3 +60,14 @@ The prior `workflows/age-api-readiness-readonly.json` and `workflows/age-chatwoo
 - Static workflow safety tests assert **no send operations, no credentials and exact operation names**.
 - n8n 2.37.9 CLI JSON-import compatibility can be tested in CI, but a bare n8n instance may accept an unknown community-node type at import: that alone is **not proof the package is installed or can execute**.
 - NOT VERIFIED: packages installed on your n8n instance, live account credentials, actual Chatwoot analytics entitlement, native node execution against your EspoCRM/Chatwoot, and any CRM recipient event writes.
+
+
+## Resolving "CONFIG_REQUIRED: enter an existing numeric Chatwoot campaign display ID"
+
+This is a deliberate preflight error from the `Set Existing Campaign ID - Fail Closed` Code node, not an API/credential error. The recipient-report workflow requires an **already existing native Chatwoot campaign**; a logical EspoCRM campaign ID, Chatwoot account ID or WhatsApp inbox ID cannot substitute.
+
+1. Import `workflows/age-chatwoot-find-campaign-ids-readonly.json` as a **new inactive** diagnostic workflow (requires `@renatoascencio/n8n-nodes-chatwoot@0.9.0`).
+2. Attach your Chatwoot API credential to the single **Campaign → Get Many** node, and execute manually.
+3. Read the last node's `campaigns[]` list and choose an existing WhatsApp one-off campaign ID. Use the numeric **`id`**, not the account/inbox/CRM ID.
+4. In `workflows/age-chatwoot-recipient-report-native.json`, edit `Set Existing Campaign ID - Fail Closed`: replace `const id='REPLACE_CHATWOOT_CAMPAIGN_DISPLAY_ID';` with `const id='123';` using your REAL returned ID instead of the example `123`.
+5. If no Chatwoot campaigns exist, recipient reporting cannot be tested yet. **Do not create or send a live campaign merely to generate an ID.** You can run ordinary EspoCRM Campaign GET checks separately, and plan a later explicitly authorized, opted-in pilot.
