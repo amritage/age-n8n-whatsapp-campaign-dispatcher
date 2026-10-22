@@ -36,3 +36,10 @@ To run after import: fill in the five `REPLACE_*` values in its `Readiness Confi
 The diagnostic does not send a message, create labels, create campaigns, update the CRM, or resolve known B-002/B-003/B-004 integration blockers. Real installed environment verification has not yet been performed.
 
 Retry calculation during the interim uses [the unchanged extension policy](RETRY_POLICY_TEMPORARY.md): 8, then 18, then 28 days after each preceding 131049 failure, subject to fresh CRM eligibility.
+
+
+## Workflow 4: `workflows/age-chatwoot-recipient-report-readonly.json` (manual recipient analytics)
+
+A 7-node **manual, disabled**, **GET-only** n8n workflow based on Chatwoot v4.19.0 source. Reads metrics, first contacts page, enumerates all pages (max 500), downloads each page, validates unique contact IDs and complete statuses, and returns aggregate counts plus error-code frequency. Does **not** emit contact names/phones/message text in final output, import CRM events or write to any database. Execution saving disabled. Configure a dedicated Chatwoot Header Auth n8n credential and non-secret host/account/campaign display ID; use the new workflow, leaving all older workflows untouched. Import and actual account API testing are still pending.
+
+For durable individual reporting, `sql/reporting-staging.sql` is a **separate, proposed private n8n Postgres schema** tested using a synthetic PostgreSQL 16 GitHub Actions job. It is not migrated into production yet, and there is no Postgres write node in this manual workflow. Future approved storage must use parameterized SQL and an authoritative campaign-recipient ID mapping.
