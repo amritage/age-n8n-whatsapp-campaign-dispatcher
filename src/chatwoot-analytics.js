@@ -33,7 +33,16 @@ function mergeContactStatus(oldItem,newItem){
 function reducePages(pages){
  if(!Array.isArray(pages)||!pages.length)throw new Error('No analytics pages');
  const total=pages[0]?.meta?.total_pages;
- if(!Number.isInteger(total)||total<1||pages.length!==total)throw new Error('Incomplete Chatwoot analytics pagination');
+ if(!Number.isInteger(total)||total<0)throw new Error('Invalid Chatwoot analytics pagination');
+ // Kaminari total_pages can equal zero for empty recipient collections. page=1 still returns [].
+ if(total===0){
+  const p=pages[0];
+  if(pages.length!==1||p?.meta?.current_page!==1||p?.meta?.total_count!==0||!Array.isArray(p.payload)||p.payload.length!==0)
+    throw new Error('Invalid zero-recipient analytics metadata');
+  return {recipients:[],counts:{queued:0,skipped:0,sent:0,delivered:0,read:0,failed:0},
+    deliveredInclusiveOfRead:0,evidenceCompleteForEspoEvent:false,missingEvidence:['providerMessageId','providerOccurredAt'],canSynchronizeCrmEvent:false};
+ }
+ if(pages.length!==total)throw new Error('Incomplete Chatwoot analytics pagination');
  const byContact=new Map();
  for(let i=0;i<pages.length;i++){
   const p=pages[i];
