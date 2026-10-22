@@ -44,8 +44,23 @@ function buildChatwootCampaign(batch){
  if(!Number.isSafeInteger(inboxId)||inboxId<1||!Number.isSafeInteger(labelId)||labelId<1)throw new Error('Invalid Chatwoot inbox/label');
  const at=new Date(batch.scheduledAt);
  if(!Number.isFinite(at.getTime()))throw new Error('Invalid scheduledAt');
- if(!batch.templateParams||typeof batch.templateParams!=='object'||Array.isArray(batch.templateParams)||Object.keys(batch.templateParams).length===0)throw new Error('Unverified template_params');
- // Template_params structure must be verified in staging: do not invent its shape.
- return {campaign:{title,message,inbox_id:inboxId,scheduled_at:at.toISOString(),audience:[{type:'Label',id:labelId}],template_params:batch.templateParams}};
+ // Verified against Chatwoot v4.19.0 Swagger create.yml and WhatsAppCampaignFormPage.
+ const params=batch.templateParams;
+ if(!params||typeof params!=='object'||Array.isArray(params))throw new Error('Unverified template_params');
+ const templateName=requireString(params.name,'template_params.name');
+ const language=requireString(params.language,'template_params.language');
+ if(!batch.approvedTemplateName||templateName!==batch.approvedTemplateName||
+    !batch.approvedTemplateLanguage||language!==batch.approvedTemplateLanguage)
+   throw new Error('Approved template name/language mismatch');
+ if(!params.processed_params||typeof params.processed_params!=='object'||Array.isArray(params.processed_params))
+   throw new Error('Missing template_params.processed_params');
+ for(const key of ['body','header','buttons']){
+   const v=params.processed_params[key];
+   if(v!==undefined && (v===null||typeof v!=='object'||Array.isArray(v)))throw new Error('Malformed processed_params.'+key);
+ }
+ if(Object.keys(params).some(k=>!['name','language','processed_params'].includes(k)))
+   throw new Error('Unexpected Chatwoot template_params key');
+ // This validates API envelope, NOT external Meta template approval or actual variable values.
+ return {campaign:{title,message,inbox_id:inboxId,scheduled_at:at.toISOString(),audience:[{type:'Label',id:labelId}],template_params:params}};
 }
 module.exports={readCampaign,buildChatwootCampaign};
