@@ -99,3 +99,12 @@ The existing AGE Campaign Management v0.4.3 GitHub API source (not confirmed as 
 **New private Postgres staging schema:** `sql/reporting-staging.sql` provides recipient status rows and success/failure test-run audit, separate from Chatwoot and EspoCRM databases. Schema idempotence and synthetic recipient inserts **passed on a temporary PostgreSQL 16 CI database**, but the schema has not been applied to the production n8n database.
 
 **Evidence:** [GitHub Actions run 39751912969](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39751912969) PASS for both `unit-and-safety` and `postgres-report-schema` jobs. See [permanent test log](reports/TEST_LOG.md). **No live sending or existing extension/workflow changes.**
+
+## 2026-10-22: preferred dedicated EspoCRM and Chatwoot n8n nodes
+
+AGE prefers **dedicated community nodes** when their operations exist: [native-node installation guide](docs/NATIVE_COMMUNITY_NODES.md) and [revised import checklist](docs/N8N_IMPORT_AND_VALIDATION.md).
+
+- `workflows/age-api-readiness-native.json`: EspoCRM Custom Entity → Get (Campaign), Chatwoot Campaign → Get/Metrics, and exactly **one custom AGE summary HTTP GET**.
+- `workflows/age-chatwoot-recipient-report-native.json`: Chatwoot Campaign → Get Metrics/Get Recipients, with **Return All** to paginate; zero HTTP nodes.
+- Community packages pinned: `@traien/n8n-nodes-espocrm@1.4.0` and `@renatoascencio/n8n-nodes-chatwoot@0.9.0`. **Not built into a clean n8n installation.** Installing them is a separate deliberate operator action, especially for queue-mode workers. Credentials stay in n8n; no tokens are embedded in workflow JSON.
+- The two older HTTP Request-only diagnostic workflows remain as portable fallbacks, and the sending/reconciliation controller shells remain disabled and non-sending. No old AGE extensions or old n8n workflows changed.
