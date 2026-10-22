@@ -2,22 +2,28 @@
 
 Status: import-verified on **n8n 2.37.9** in temporary GitHub Actions container; user production connection NOT tested; no send capability enabled.
 
-## Preferred import path (updated 2026-10-22)
+## Preferred zero-ID import path (corrected 2026-10-22)
 
-**If your n8n installation already has the exact supported community packages, prefer:**
+Your n8n screenshot confirms both required community-node packages are already installed. **You do NOT need to configure or enter EspoCRM campaign IDs, Chatwoot campaign IDs, account IDs, inbox IDs or host URLs in these new workflows.** The two node credentials carry the account/host authentication details.
 
-1. [`workflows/age-api-readiness-native.json`](../workflows/age-api-readiness-native.json): **EspoCRM node Get Campaign** + **Chatwoot Get Campaign/Metrics** + **one HTTP GET** for custom `AGECampaign/summary/:id`.
-2. [`workflows/age-chatwoot-recipient-report-native.json`](../workflows/age-chatwoot-recipient-report-native.json): **Chatwoot Get Metrics and Get Recipients (Return All)**, zero HTTP nodes.
+| Import order | Workflow file | Automatically discovers | Expected response |
+|---|---|---|---|
+| 1 | [`age-api-readiness-native.json`](../workflows/age-api-readiness-native.json) | **All** EspoCRM Campaign records via the EspoCRM node; **all** Chatwoot Campaign records via the Chatwoot node | CRM/Chatwoot inventory counts and native WhatsApp one-off campaign list, with explicit `crossSystemCampaignMappingVerified:false` |
+| 2 | [`age-chatwoot-recipient-report-native.json`](../workflows/age-chatwoot-recipient-report-native.json) | Completed WhatsApp one-off campaigns, **per-campaign metrics and all recipient pages** (up to 40 completed campaigns per run) | Delivered/read/failed/sent/skipped counts by Chatwoot campaign, error-code frequencies; no direct CRM event writes |
 
-Required exact packages and versions: **`@traien/n8n-nodes-espocrm@1.4.0`** and **`@renatoascencio/n8n-nodes-chatwoot@0.9.0`**. They are third-party community nodes, **not bundled** in n8n. Follow [the native-node setup and security guide](NATIVE_COMMUNITY_NODES.md) before attempting this import; importing an unknown node type into a plain n8n instance does not install that package.
+**Steps:** Import as **new** workflows, choose the already installed EspoCRM API and Chatwoot API credentials in the relevant native nodes, then **Execute Workflow** manually. They are inactive by default. The reporting workflow includes an hourly Schedule Trigger, but scheduling does not run until you explicitly activate the workflow after validating a manual run.
 
-**If packages are not installed or you prefer to avoid third-party dependencies:** use the original two HTTP GET-only read-only diagnostics detailed below. Do not install a new package solely to replace a straightforward GET without reviewing maintenance/security implications.
+The old imported copies still contain `Configure IDs - No Secrets` and `Set Existing Campaign ID - Fail Closed`; **do not keep editing them**. Reimport these updated JSON files as new workflows instead. The finder workflow and individual campaign IDs are no longer required.
 
-**Do not import the two inert scheduler shells expecting working sends.** All diagnostics use manual trigger, contain no send operations and remain disabled. Test using an existing Chatwoot campaign.
+The reporting workflow filters `campaign_type=one_off`, `inbox.channel_type=Channel::Whatsapp`, and `campaign_status=completed`. If **no native Chatwoot one-off campaign exists**, it returns a safe zero-campaign report, without asking for an ID or creating a campaign.
+
+A full EspoCRM↔Chatwoot historical match is **not available just from the campaign lists**. For actual automated sending, the future dispatcher will create one-off batches and store the returned Chatwoot campaign ID alongside the CRM campaign ID in a private durable ledger. These two workflows are **read-only diagnostics**, not a live sender or production EspoCRM status synchronizer.
+
+Both required community node packages are already installed per your screenshot: `@traien/n8n-nodes-espocrm@1.4.0` and `@renatoascencio/n8n-nodes-chatwoot@0.9.0`. No additional installation is needed. [Native-node details](NATIVE_COMMUNITY_NODES.md).
 
 ---
 
-## Original portable HTTP GET-only fallback
+## Legacy HTTP GET-only fallback (requires IDs; not preferred)
 
 | Order | File | Purpose | Does it send? |
 |---|---|---|---|
