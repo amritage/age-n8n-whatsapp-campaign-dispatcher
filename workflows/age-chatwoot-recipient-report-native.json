@@ -1,0 +1,134 @@
+{
+  "id": "AGEcwNativeRptV01",
+  "name": "AGE - Chatwoot Native Node Recipient Report - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9001",
+      "name": "Manual Trigger - Native Recipient Report",
+      "position": [
+        200,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// EDIT ONLY THIS NON-SECRET ID after importing. The Chatwoot URL, account and token belong\n// in the dedicated Chatwoot API credential of @renatoascencio/n8n-nodes-chatwoot@0.9.0.\n// NO SEND OPERATIONS are present.\nconst id='REPLACE_CHATWOOT_CAMPAIGN_DISPLAY_ID';\nif(!/^[1-9][0-9]*$/.test(id))throw new Error('CONFIG_REQUIRED: enter an existing numeric Chatwoot campaign display ID');\nreturn [{json:{campaignId:Number(id),readOnly:true}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9002",
+      "name": "Set Existing Campaign ID - Fail Closed",
+      "position": [
+        450,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getMetrics",
+        "campaignId": "={{ $('Set Existing Campaign ID - Fail Closed').first().json.campaignId }}"
+      },
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9003",
+      "name": "Chatwoot - Campaign Get Metrics",
+      "position": [
+        700,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getRecipients",
+        "campaignId": "={{ $('Set Existing Campaign ID - Fail Closed').first().json.campaignId }}",
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9004",
+      "name": "Chatwoot - Campaign Get All Recipients",
+      "alwaysOutputData": true,
+      "position": [
+        960,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Only aggregate counts and Meta failure-code frequency leave this workflow.\n// Campaign recipient records may contain phone/name/content; do not save executions or pin data.\nconst metrics=$('Chatwoot - Campaign Get Metrics').first().json;\nconst entries=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length>0);\nconst counts={queued:0,skipped:0,sent:0,delivered:0,read:0,failed:0};\nconst errors={},seen=new Set();\nfor(const row of entries){\n  const id=row?.contact?.id;\n  if(!Number.isInteger(id)||id<1||seen.has(id)||!Object.hasOwn(counts,row.status))throw new Error('Invalid or duplicate recipient response; stop reporting');\n  seen.add(id);counts[row.status]++;\n  if(row.status==='failed'){\n    const code=row.error_code===null||row.error_code===undefined?'UNKNOWN':String(row.error_code);\n    if(!/^(UNKNOWN|[0-9]{3,8})$/.test(code))throw new Error('Unexpected provider error-code format');\n    errors[code]=(errors[code]||0)+1;\n  }\n}\nif(!Number.isInteger(metrics.audience)||metrics.audience!==seen.size||\n    metrics.delivered!==counts.delivered+counts.read||metrics.read!==counts.read||\n    metrics.failed!==counts.failed||metrics.skipped!==counts.skipped)\n throw new Error('Chatwoot aggregate vs recipient mismatch; could be changing during reads—retry later');\nreturn [{json:{\n  checkedAt:new Date().toISOString(),mode:'READ_ONLY',\n  chatwootCampaignDisplayId:$('Set Existing Campaign ID - Fail Closed').first().json.campaignId,\n  audience:seen.size,counts,deliveredIncludingRead:counts.delivered+counts.read,\n  failureCodeCounts:errors,crmEventWriteAuthorized:false,\n  evidence:'Chatwoot campaign analytics; Meta message IDs/timestamps not available'\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9005",
+      "name": "Return Safe Aggregate Report",
+      "position": [
+        1220,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger - Native Recipient Report": {
+      "main": [
+        [
+          {
+            "node": "Set Existing Campaign ID - Fail Closed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Existing Campaign ID - Fail Closed": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Campaign Get Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Campaign Get Metrics": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Campaign Get All Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Campaign Get All Recipients": {
+      "main": [
+        [
+          {
+            "node": "Return Safe Aggregate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
