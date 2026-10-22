@@ -7,7 +7,8 @@
     "timezone": "Asia/Kolkata",
     "saveDataSuccessExecution": "none",
     "saveDataErrorExecution": "none",
-    "saveManualExecutions": false
+    "saveManualExecutions": false,
+    "executionTimeout": 600
   },
   "nodes": [
     {
@@ -37,10 +38,14 @@
         450,
         280
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
+        "mode": "runOnceForAllItems",
         "jsCode": "// No campaign IDs. Inspect EVERY EspoCRM Campaign using the installed native node.\nconst records=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nconst seen=new Set(),campaigns=[];\nfor(const c of records){\n  if(typeof c.id!=='string'||!c.id||seen.has(c.id))throw new Error('Invalid or duplicate EspoCRM Campaign record');\n  seen.add(c.id);\n  // Restrict result to non-sensitive campaign operational fields.\n  campaigns.push({id:c.id,name:typeof c.name==='string'?c.name:null,status:c.status||null,\n    trackingEnabled:c.ageTrackingEnabled===true,provider:c.ageProvider||null,\n    inboxId:c.ageInboxId??null,templateName:c.ageTemplateName||null});\n}\nreturn [{json:{espoReadable:true,espoCampaignCount:campaigns.length,activeCount:campaigns.filter(c=>c.status==='Active').length,\n  whatsappCandidateCount:campaigns.filter(c=>c.provider&&String(c.provider).includes('Chatwoot')).length,\n  // Existing EspoCRM campaign metadata is not proof of a Chatwoot one-off batch.\n  espoCampaigns:campaigns}}];"
       },
       "type": "n8n-nodes-base.code",
@@ -65,11 +70,15 @@
         980,
         280
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
     },
     {
       "parameters": {
-        "jsCode": "// Discover and summarize independently. Never join by title/name or assume CRM ID equals Chatwoot ID.\nconst crm=$('Summarize CRM Inventory').first().json;\nconst raw=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nconst seen=new Set(),list=[];\nfor(const c of raw){\n  const id=Number(c.id);\n  if(!Number.isSafeInteger(id)||id<=0||seen.has(id))throw new Error('Invalid or duplicate Chatwoot campaign');\n  seen.add(id);\n  list.push({id,title:typeof c.title==='string'?c.title.slice(0,100):null,\n    type:c.campaign_type||null,status:c.campaign_status||null,\n    inboxType:c.inbox?.channel_type||null,inboxId:c.inbox?.id??null});\n}\nconst whatsapp=list.filter(c=>c.type==='one_off'&&c.inboxType==='Channel::Whatsapp');\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',campaignIdsRequired:false,\n    espoCampaignCount:crm.espoCampaignCount,espoActiveCount:crm.activeCount,\n    chatwootCampaignCount:list.length,chatwootNativeWhatsAppCount:whatsapp.length,\n    chatwootWhatsAppCampaigns:whatsapp,\n    espocrmCampaigns:crm.espoCampaigns,\n    crossSystemCampaignMappingVerified:false,\n    customAGECampaignSummaryTested:false,campaignAnalyticsTested:false,\n    note:'CRM Campaign IDs and Chatwoot native campaign display IDs are distinct; only a recorded batch ledger can safely join them.',\n    canDispatch:false,crmEventWriteAuthorized:false,liveSendAttempted:false}}];"
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Discover and summarize independently. Never join by title/name or assume CRM ID equals Chatwoot ID.\nconst crm=$('Summarize CRM Inventory').first().json;\nconst raw=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nconst seen=new Set(),list=[];\nfor(const c of raw){\n  const id=Number(c.id);\n  if(!Number.isSafeInteger(id)||id<=0||seen.has(id))throw new Error('Invalid or duplicate Chatwoot campaign');\n  seen.add(id);\n  list.push({id,title:typeof c.title==='string'?c.title.slice(0,100):null,\n    type:c.campaign_type||null,status:c.campaign_status||null,\n    inboxType:c.inbox?.channel_type||null,inboxId:c.inbox?.id??null});\n}\nconst whatsapp=list.filter(c=>c.type==='one_off'&&c.inboxType==='Channel::Whatsapp');\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',campaignIdsRequired:false,\n    espoCampaignCount:crm.espoCampaignCount,espoActiveCount:crm.activeCount,\n    chatwootCampaignCount:list.length,chatwootNativeWhatsAppCount:whatsapp.length,\n    chatwootWhatsAppCampaigns:whatsapp.slice(0,25),\n    chatwootCampaignsShown:Math.min(whatsapp.length,25),\n    espocrmCampaigns:crm.espoCampaigns.slice(0,25),\n    espoCampaignsShown:Math.min(crm.espoCampaigns.length,25),\n    crossSystemCampaignMappingVerified:false,\n    customAGECampaignSummaryTested:false,campaignAnalyticsTested:false,\n    note:'CRM Campaign IDs and Chatwoot native campaign display IDs are distinct; only a recorded batch ledger can safely join them.',\n    canDispatch:false,crmEventWriteAuthorized:false,liveSendAttempted:false}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
