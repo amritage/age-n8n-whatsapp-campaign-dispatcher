@@ -1,6 +1,6 @@
 {
   "id": "AGEcwNativeRptV01",
-  "name": "AGE - Automatically Report Chatwoot WhatsApp Campaigns - Read Only",
+  "name": "AGE - Native Chatwoot Campaign Health and Failure Codes (Safe Read Only)",
   "active": false,
   "settings": {
     "executionOrder": "v1",
@@ -18,12 +18,12 @@
       "parameters": {},
       "position": [
         180,
-        200
+        180
       ]
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9008",
-      "name": "Schedule Hourly (Enable Only After Pilot)",
+      "name": "Schedule Every 6 Hours (After Pilot)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "parameters": {
@@ -31,19 +31,19 @@
           "interval": [
             {
               "field": "hours",
-              "hoursInterval": 1
+              "hoursInterval": 6
             }
           ]
         }
       },
       "position": [
         180,
-        400
+        380
       ]
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9002",
-      "name": "Chatwoot - Discover Campaigns",
+      "name": "Chatwoot - Get Campaign Inventory",
       "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
       "typeVersion": 1,
       "parameters": {
@@ -51,27 +51,28 @@
         "operation": "getAll"
       },
       "position": [
-        460,
-        280
+        440,
+        270
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "continueOnFail": true
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9003",
-      "name": "Select Completed WhatsApp Campaigns",
+      "name": "Select Recent Campaigns - Rotating Batches",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
-        "jsCode": "// Discover native WhatsApp one-off campaigns, not EspoCRM campaigns. No manually entered IDs.\n// This is READ-ONLY. Reconcile the most recent completed campaigns first; never silently invent links.\nconst all=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nconst eligible=all.filter(c=>c.campaign_type==='one_off' && c.inbox?.channel_type==='Channel::Whatsapp' && c.campaign_status==='completed');\neligible.sort((a,b)=>(Number(b.completed_at)||0)-(Number(a.completed_at)||0)||Number(b.id)-Number(a.id));\nconst MAX_CAMPAIGNS=40;\nif(eligible.length>MAX_CAMPAIGNS)throw new Error('SAFE_SCAN_LIMIT_EXCEEDED: '+eligible.length+' completed WhatsApp campaigns; expand pagination/ledger before full automatic reporting');\nif(!eligible.length)return [{json:{hasCampaign:false,reason:'NO_COMPLETED_NATIVE_WHATSAPP_CAMPAIGNS',chatwootCampaignsDiscovered:all.length}}];\nconst ids=new Set();\nreturn eligible.map(c=>{\n const id=Number(c.id);\n if(!Number.isSafeInteger(id)||id<=0||ids.has(id))throw new Error('Invalid/duplicate Chatwoot native campaign display ID');\n ids.add(id);\n return {json:{hasCampaign:true,chatwootCampaignId:id,title:typeof c.title==='string'?c.title.slice(0,120):'',\n      completedAt:c.completed_at??null,inboxId:c.inbox?.id??null,readOnly:true}};\n});"
+        "jsCode": "// Scan only current/late-changing native WhatsApp campaigns. No manual IDs.\nconst raw=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nif(raw.some(x=>x.error))return [{json:{hasCampaign:false,reason:'CHATWOOT_CAMPAIGN_LIST_UNAVAILABLE',availability:'BLOCKED'}}];\nconst now=Date.now(),windowDays=14,scanBatchSize=5,scanPeriodHours=6;\nconst earliest=now-windowDays*86400000;\nconst all=[];\nfor(const c of raw){\n  if(c.campaign_type!=='one_off'||c.inbox?.channel_type!=='Channel::Whatsapp')continue;\n  if(!['completed','processing'].includes(c.campaign_status))continue;\n  const stamp=Number(c.completed_at||c.started_at||0);\n  if(c.campaign_status==='completed' && stamp>0 && stamp*1000<earliest)continue;\n  const id=Number(c.id);\n  if(!Number.isSafeInteger(id)||id<1)throw new Error('Invalid WhatsApp campaign display ID');\n  all.push({id,title:String(c.title||'').slice(0,90),status:c.campaign_status,completedAt:c.completed_at??null,stamp});\n}\nall.sort((a,b)=>b.stamp-a.stamp||b.id-a.id);\nconst groups=Math.ceil(all.length/scanBatchSize);\nif(groups===0)return [{json:{hasCampaign:false,reason:'NO_RECENT_NATIVE_WHATSAPP_CAMPAIGNS',availability:'NO_DATA'}}];\n// Rotate in 6h windows. Cap API load while making EVERY group reachable eventually.\nconst slot=Math.floor(now/(scanPeriodHours*3600000)),group=slot%groups;\nconst selected=all.slice(group*scanBatchSize,(group+1)*scanBatchSize);\nreturn selected.map(c=>({json:{\n hasCampaign:true,campaignId:c.id,title:c.title,status:c.status,completedAt:c.completedAt,\n totalEligible:all.length,selectedCount:selected.length,scanGroup:group,scanGroups:groups,\n readOnly:true\n}}));"
       },
       "position": [
-        720,
-        280
+        690,
+        270
       ]
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9004",
-      "name": "Any Completed Campaigns?",
+      "name": "Has Eligible Campaigns?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "parameters": {
@@ -85,7 +86,7 @@
           "combinator": "and",
           "conditions": [
             {
-              "id": "check",
+              "id": "chk-has-campaign",
               "leftValue": "={{ $json.hasCampaign }}",
               "rightValue": true,
               "operator": {
@@ -98,67 +99,85 @@
         }
       },
       "position": [
-        970,
-        280
+        950,
+        270
       ]
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9005",
-      "name": "Chatwoot - Get Metrics For Each Campaign",
+      "name": "Chatwoot - Get Metrics",
       "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
       "typeVersion": 1,
       "parameters": {
         "resource": "campaign",
         "operation": "getMetrics",
-        "campaignId": "={{ $json.chatwootCampaignId }}"
+        "campaignId": "={{ $json.campaignId }}"
       },
       "position": [
-        1210,
-        200
+        1190,
+        160
+      ],
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9010",
+      "name": "Attach Campaign Context to Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "// Metrics output loses its campaign ID; recover it from the COMMUNITY NODE'S input pairing.\n// Preserve 1:1 item pairing into failed-recipient lookup.\nconst selected=$('Select Recent Campaigns - Rotating Batches').all().map(x=>x.json).filter(x=>x.hasCampaign);\nconst items=$input.all(),seen=new Set(),out=[];\nfor(const x of items){\n const p=Array.isArray(x.pairedItem)?x.pairedItem[0]:x.pairedItem;\n if(!p||!Number.isInteger(p.item)||p.item<0||p.item>=selected.length)throw new Error('METRICS_INPUT_PAIRING_MISSING');\n const i=p.item;if(seen.has(i))throw new Error('DUPLICATE_METRICS_PAIRING');seen.add(i);\n const m=x.json||{};\n if(m.error||!Number.isSafeInteger(m.audience)){\n   out.push({json:{...selected[i],metricsAvailable:false,blockedReason:'CAMPAIGN_ANALYTICS_NOT_AVAILABLE',\n     failedExpected:null,counts:null},pairedItem:{item:i}});\n   continue;\n }\n const keys=['audience','sent','delivered','read','failed','skipped'];\n if(keys.some(k=>!Number.isSafeInteger(m[k])||m[k]<0))throw new Error('INVALID_ANALYTICS_COUNTERS');\n if(m.read>m.delivered||m.delivered>m.audience||m.failed>m.audience)throw new Error('CONTRADICTORY_ANALYTICS_COUNTERS');\n out.push({json:{...selected[i],metricsAvailable:true,failedExpected:m.failed,\n   counts:{audience:m.audience,sent:m.sent,deliveredIncludingRead:m.delivered,read:m.read,failed:m.failed,skipped:m.skipped}},\n   pairedItem:{item:i}});\n}\nif(seen.size!==selected.length)throw new Error('INCOMPLETE_METRICS_RESPONSES');\nreturn out;"
+      },
+      "position": [
+        1430,
+        160
       ]
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9006",
-      "name": "Chatwoot - Get All Recipients For Each Campaign",
+      "name": "Chatwoot - Get Failed Recipients",
       "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
       "typeVersion": 1,
       "parameters": {
         "resource": "campaign",
         "operation": "getRecipients",
-        "campaignId": "={{ $('Select Completed WhatsApp Campaigns').all()[$itemIndex].json.chatwootCampaignId }}",
+        "campaignId": "={{ $json.campaignId }}",
         "returnAll": true,
-        "options": {}
+        "options": {
+          "status": "failed"
+        }
       },
       "position": [
-        1460,
-        200
+        1670,
+        160
       ],
+      "continueOnFail": true,
       "alwaysOutputData": true
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9007",
-      "name": "Verify and Summarize All Campaigns",
+      "name": "Validate and Report Aggregate Failures",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
-        "jsCode": "// Each Chatwoot community-node recipient result carries pairedItem index pointing\n// to the Get Metrics input campaign. Never guess recipient-to-campaign association.\nconst selections=$('Select Completed WhatsApp Campaigns').all().map(x=>x.json).filter(x=>x.hasCampaign===true);\nconst metricsRows=$('Chatwoot - Get Metrics For Each Campaign').all();\nconst metricsByIdx=new Map(),recipientByIdx=new Map();\nfunction pairedIndex(item,label){\n const p=Array.isArray(item.pairedItem)?item.pairedItem[0]:item.pairedItem;\n if(!p||!Number.isInteger(p.item)||p.item<0)throw new Error('MISSING_PAIRING_'+label+': refusing to mix unrelated campaigns');\n return p.item;\n}\nfor(const row of metricsRows){\n const idx=pairedIndex(row,'METRICS');\n if(idx>=selections.length||metricsByIdx.has(idx))throw new Error('Duplicate/unmatched campaign metrics');\n metricsByIdx.set(idx,row.json);\n}\nfor(const row of $input.all()){\n if(!row.json||Object.keys(row.json).length===0)continue;\n const idx=pairedIndex(row,'RECIPIENT');\n if(idx>=selections.length||!metricsByIdx.has(idx))throw new Error('Unmatched recipient campaign ID');\n if(!recipientByIdx.has(idx))recipientByIdx.set(idx,[]);\n recipientByIdx.get(idx).push(row.json);\n}\nconst final=[];\nfor(let idx=0;idx<selections.length;idx++){\n const c=selections[idx],m=metricsByIdx.get(idx),rows=recipientByIdx.get(idx)||[];\n if(!m||!Number.isInteger(m.audience))throw new Error('Missing valid campaign metrics');\n const counts={queued:0,skipped:0,sent:0,delivered:0,read:0,failed:0},codes={},seen=new Set();\n for(const row of rows){\n  const recipientId=Number(row?.contact?.id);\n  if(!Number.isSafeInteger(recipientId)||recipientId<=0||seen.has(recipientId)||!Object.hasOwn(counts,row.status))\n    throw new Error('Invalid/duplicate recipient in campaign '+c.chatwootCampaignId);\n  seen.add(recipientId);counts[row.status]++;\n  if(row.status==='failed'){\n   const code=row.error_code===null||row.error_code===undefined?'UNKNOWN':String(row.error_code);\n   if(!/^(UNKNOWN|[0-9]{3,8})$/.test(code))throw new Error('Unexpected failure-code format');\n   codes[code]=(codes[code]||0)+1;\n  }\n }\n if(seen.size!==m.audience||counts.read!==m.read||counts.delivered+counts.read!==m.delivered||\n    counts.failed!==m.failed||counts.skipped!==m.skipped)\n   throw new Error('Analytics count mismatch for campaign '+c.chatwootCampaignId+'; retry a later run');\n final.push({chatwootCampaignId:c.chatwootCampaignId,title:c.title,\n   audience:m.audience,counts,deliveredIncludingRead:counts.delivered+counts.read,\n   errorCodeCounts:codes,matchedEspoCampaignId:null,verifiedCrmMapping:false});\n}\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',autoDiscoverCampaigns:true,\n campaignCount:final.length,reports:final,crmEventWriteAuthorized:false,\n note:'Chatwoot reports only; EspoCRM campaign/recipient association needs a verified batch ledger.'}}];"
+        "jsCode": "// Failed-recipient API is filtered at source. Verify failure count and do not expose PII.\nconst metadata=$('Attach Campaign Context to Metrics').all().map(x=>x.json);\nconst failed=new Map(),blocked=new Set();\nconst list=$input.all();\nfor(const item of list){\n const p=Array.isArray(item.pairedItem)?item.pairedItem[0]:item.pairedItem;\n if(!p||!Number.isInteger(p.item)||p.item<0||p.item>=metadata.length)\n   throw new Error('RECIPIENT_CAMPAIGN_PAIRING_MISSING');\n const idx=p.item,raw=item.json||{};\n if(!failed.has(idx))failed.set(idx,[]);\n if(raw.error){blocked.add(idx);continue;}\n if(Object.keys(raw).length===0)continue; // n8n Always Output Data on an empty recipient page\n if(raw.status!=='failed')throw new Error('UNFILTERED_RECIPIENT_RESPONSE');\n const id=Number(raw.contact?.id);\n if(!Number.isSafeInteger(id)||id<1)throw new Error('MISSING_CONTACT_ID');\n failed.get(idx).push({id,code:raw.error_code==null?'UNKNOWN':String(raw.error_code)});\n}\nconst reports=[];\nfor(let idx=0;idx<metadata.length;idx++){\n const c=metadata[idx],rows=failed.get(idx)||[],seen=new Set(),codes={};\n if(c.metricsAvailable){\n   for(const r of rows){\n     if(seen.has(r.id))throw new Error('DUPLICATE_FAILED_CONTACT');\n     seen.add(r.id);\n     if(!/^(UNKNOWN|[0-9]{3,8})$/.test(r.code))throw new Error('INVALID_META_ERROR_CODE');\n     codes[r.code]=(codes[r.code]||0)+1;\n   }\n }\n let status='PASS',reason=null;\n if(!c.metricsAvailable){status='BLOCKED';reason=c.blockedReason;}\n else if(blocked.has(idx)){status='BLOCKED';reason='RECIPIENT_ANALYTICS_NOT_AVAILABLE';}\n else if(rows.length!==c.failedExpected){status='BLOCKED';reason='FAILED_RECIPIENT_COUNT_MISMATCH';}\n reports.push({chatwootCampaignId:c.campaignId,title:c.title,campaignStatus:c.status,\n   status,reason,counts:c.counts,errorCodeCounts:status==='PASS'?codes:null,\n   verifiedCrmMapping:false,crmEventWriteAuthorized:false});\n}\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',\n status:reports.some(r=>r.status==='BLOCKED')?'PARTIAL_OR_BLOCKED':'PASS',\n scan:{selected:metadata.length,eligible:metadata[0]?.totalEligible||0,group:metadata[0]?.scanGroup||0,groups:metadata[0]?.scanGroups||0},\n reports,crmEventWriteAuthorized:false,sendAttempted:false,\n note:'Chatwoot provider IDs/times and EspoCRM batch mappings are not available from this analytics API.'}}];"
       },
       "position": [
-        1730,
-        200
+        1910,
+        160
       ]
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9009",
-      "name": "No Eligible Native Campaigns",
+      "name": "No Reportable Campaigns",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
-        "jsCode": "return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',autoDiscoverCampaigns:true,campaignCount:0,reports:[],reason:$input.first().json.reason||'NONE',crmEventWriteAuthorized:false}}];"
+        "jsCode": "const x=$input.first().json;return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',status:x.availability==='BLOCKED'?'BLOCKED':'NO_DATA',reason:x.reason||'NO_DATA',reports:[],crmEventWriteAuthorized:false,sendAttempted:false}}];"
       },
       "position": [
-        1210,
-        410
+        1190,
+        400
       ]
     }
   ],
@@ -167,80 +186,91 @@
       "main": [
         [
           {
-            "node": "Chatwoot - Discover Campaigns",
+            "node": "Chatwoot - Get Campaign Inventory",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Schedule Hourly (Enable Only After Pilot)": {
+    "Schedule Every 6 Hours (After Pilot)": {
       "main": [
         [
           {
-            "node": "Chatwoot - Discover Campaigns",
+            "node": "Chatwoot - Get Campaign Inventory",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Chatwoot - Discover Campaigns": {
+    "Chatwoot - Get Campaign Inventory": {
       "main": [
         [
           {
-            "node": "Select Completed WhatsApp Campaigns",
+            "node": "Select Recent Campaigns - Rotating Batches",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Select Completed WhatsApp Campaigns": {
+    "Select Recent Campaigns - Rotating Batches": {
       "main": [
         [
           {
-            "node": "Any Completed Campaigns?",
+            "node": "Has Eligible Campaigns?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Any Completed Campaigns?": {
+    "Chatwoot - Get Metrics": {
       "main": [
         [
           {
-            "node": "Chatwoot - Get Metrics For Each Campaign",
+            "node": "Attach Campaign Context to Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Campaign Context to Metrics": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Get Failed Recipients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Get Failed Recipients": {
+      "main": [
+        [
+          {
+            "node": "Validate and Report Aggregate Failures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Eligible Campaigns?": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Get Metrics",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "No Eligible Native Campaigns",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Chatwoot - Get Metrics For Each Campaign": {
-      "main": [
-        [
-          {
-            "node": "Chatwoot - Get All Recipients For Each Campaign",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Chatwoot - Get All Recipients For Each Campaign": {
-      "main": [
-        [
-          {
-            "node": "Verify and Summarize All Campaigns",
+            "node": "No Reportable Campaigns",
             "type": "main",
             "index": 0
           }
