@@ -44,6 +44,8 @@ This file tracks historical **observed** results and blockers. GitHub Actions al
 | 2026-10-22 | Intermediate reporting regression tests during optimization | FAIL (resolved) | [Runs 39764444600](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39764444600) and [39764486017](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39764486017) failed where static/fixtures referred to removed nodes; fixture contract updated to audited node map. | Re-tested in succeeding CI |
 | 2026-10-22 | Optimized import, unit tests and PostgreSQL CI | PASS | [Run 39764890174](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39764890174) at commit `4b51bc1` passed unit-and-safety, n8n 2.37.9 CLI import and ephemeral PostgreSQL schema jobs. Actual native nodes were not executed against live hosted systems. | Obtain manual actual-connection output before scheduling |
 
+| 2026-10-22 | Chatwoot installed version clarification | USER-CONFIRMED / API NOT PROBED | Operator explicitly confirmed **Chatwoot v4.19.0** is installed; prior v4.17.1 version-drift concern is closed for design. Official v4.19.0 source contains the native batch job. | Verify analytics feature entitlement and live APIs before release; no upgrade needed |
+
 ### Recording convention
 - PASS = successfully exercised with stated evidence and scope; FAIL = tested and produced incorrect behavior; BLOCKED = cannot safely proceed; SKIP/NOT RUN = not attempted, **never count as PASS**.
 - Always record date/time, system version, commit, scenario, observed/expected behavior, failure reason/error code, remediation and retest status.
