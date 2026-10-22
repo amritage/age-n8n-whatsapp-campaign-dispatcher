@@ -48,6 +48,8 @@ jobs:
         run: node tests/native-community-workflows.test.js
       - name: Run actual Code-node auto-discovery and cross-campaign mapping fixtures
         run: node tests/auto-discovery-runtime.test.js
+      - name: Check Chatwoot installed-version compatibility and fail-closed live gate
+        run: node tests/chatwoot-compatibility.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
