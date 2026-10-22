@@ -1,9 +1,9 @@
 
 ## Independent operations audit — version and reporting caveats (2026-10-22)
 
-**Please read [the adversarial deployment audit](docs/RED_TEAM_AUDIT_2026-10-22.md) before enabling any automated sending.** It identifies 12 concrete risks, including an important possible version mismatch: the last confirmed Chatwoot deployment was **v4.17.1**; the proposed native Chatwoot 100-contact batch-worker design exists in inspected **v4.19.0** source, not the inspected v4.17.1 source. The installed server version has **not been verified today**. Do not assume v4.19-native batching is available or upgrade just to run a diagnostic.
+**Please read [the adversarial deployment audit](docs/RED_TEAM_AUDIT_2026-10-22.md) before enabling any automated sending.** The operator **confirmed Chatwoot v4.19.0 is currently installed (2026-10-22)**. This resolves the prior v4.17.1-versus-v4.19.0 architecture uncertainty: the inspected v4.19.0 source provides the native 100-contact batch worker needed for the selected design. Deployment version was confirmed in conversation, **not independently inspected through the running Chatwoot service**. No Chatwoot upgrade is requested or necessary for the planned design.
 
-Read-only analytics exists in v4.17.1 enterprise code but requires the `whatsapp_campaign` feature; the v4.19.0 code uses different feature checks. Neither proves your particular self-hosted account has entitlement. If read-only analytics fails, report **BLOCKED**, not zero success or failure.
+In confirmed Chatwoot **v4.19.0**, campaign analytics is still feature-gated by `campaign_analytics` (and campaign access); that source code alone does **not** establish the self-hosted account's entitlement. The read-only API probe must pass before dependent reporting is trusted. If read-only analytics fails, report **BLOCKED**, not zero success or failure.
 
 `src/chatwoot-compatibility.js` is a conservative version capability gate with regression tests. It **never** authorizes live sends, and current workflows remain entirely diagnostic. Reporting samples five recent/processing campaigns per six-hour rotation and filters to failed recipients; this is **not exhaustive incremental durable delivery history**.
 
