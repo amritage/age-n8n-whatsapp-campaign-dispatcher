@@ -13,4 +13,13 @@ const d=input();d.portfolio.externalUseUnknown=true;assert.throws(()=>plan(d),/E
 const e=input();e.masterSendingEnabled=false;assert.throws(()=>plan(e),/not enabled/);
 assert.equal(campaignOpen(campaign('maha'),now),true);
 assert.equal(campaignOpen(campaign('maha'),'2026-10-25T06:00:00Z'),false);
-console.log('PASS: planner safety, gap, cap, cross-campaign dedupe, suppression, windows');
+const fair=input();
+fair.portfolio.tier=4;fair.portfolio.hardCycleMax=4;
+fair.candidates=[
+  candidate('maha','m1','p1'),candidate('maha','m2','p2'),candidate('maha','m3','p3'),
+  candidate('guj','g1','p4'),candidate('guj','g2','p5'),candidate('guj','g3','p6')
+];
+const out=plan(fair);
+assert.equal(out.selected.length,4);
+assert.deepEqual(out.allocation,[{campaignId:'maha',count:2},{campaignId:'guj',count:2}]);
+console.log('PASS: planner safety, gap, cap, cross-campaign dedupe, suppression, windows, fairness');
