@@ -9,13 +9,13 @@ Your n8n screenshot confirms both required community-node packages are already i
 | Import order | Workflow file | Automatically discovers | Expected response |
 |---|---|---|---|
 | 1 | [`age-api-readiness-native.json`](../workflows/age-api-readiness-native.json) | **All** EspoCRM Campaign records via the EspoCRM node; **all** Chatwoot Campaign records via the Chatwoot node | CRM/Chatwoot inventory counts and native WhatsApp one-off campaign list, with explicit `crossSystemCampaignMappingVerified:false` |
-| 2 | [`age-chatwoot-recipient-report-native.json`](../workflows/age-chatwoot-recipient-report-native.json) | Completed WhatsApp one-off campaigns, **per-campaign metrics and all recipient pages** (up to 40 completed campaigns per run) | Delivered/read/failed/sent/skipped counts by Chatwoot campaign, error-code frequencies; no direct CRM event writes |
+| 2 | [`age-chatwoot-recipient-report-native.json`](../workflows/age-chatwoot-recipient-report-native.json) | Processing or recently completed native WhatsApp campaigns, **per-campaign metrics and failed-recipient pages only**, rotating five campaigns per six-hour scan | Delivered/read/failed/sent/skipped counts by Chatwoot campaign, error-code frequencies; no direct CRM event writes |
 
-**Steps:** Import as **new** workflows, choose the already installed EspoCRM API and Chatwoot API credentials in the relevant native nodes, then **Execute Workflow** manually. They are inactive by default. The reporting workflow includes an hourly Schedule Trigger, but scheduling does not run until you explicitly activate the workflow after validating a manual run.
+**Steps:** Import as **new** workflows, choose the already installed EspoCRM API and Chatwoot API credentials in the relevant native nodes, then **Execute Workflow** manually. They are inactive by default. The reporting workflow includes a six-hour Schedule Trigger, but scheduling does not run until you explicitly activate the workflow after validating a manual run.
 
 The old imported copies still contain `Configure IDs - No Secrets` and `Set Existing Campaign ID - Fail Closed`; **do not keep editing them**. Reimport these updated JSON files as new workflows instead. The finder workflow and individual campaign IDs are no longer required.
 
-The reporting workflow filters `campaign_type=one_off`, `inbox.channel_type=Channel::Whatsapp`, and `campaign_status=completed`. If **no native Chatwoot one-off campaign exists**, it returns a safe zero-campaign report, without asking for an ID or creating a campaign.
+The reporting workflow filters `campaign_type=one_off`, `inbox.channel_type=Channel::Whatsapp`, and status `processing` or recently `completed`. If **no recent native Chatwoot one-off campaign exists**, it returns a safe zero-campaign report, without asking for an ID or creating a campaign.
 
 A full EspoCRM↔Chatwoot historical match is **not available just from the campaign lists**. For actual automated sending, the future dispatcher will create one-off batches and store the returned Chatwoot campaign ID alongside the CRM campaign ID in a private durable ledger. These two workflows are **read-only diagnostics**, not a live sender or production EspoCRM status synchronizer.
 
@@ -73,3 +73,11 @@ The two automated **sending** workflows remain inert. An actual go-live needs a 
 - [n8n 2.37.9 real import / all regression PASS](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39754290485)
 - [Prior failed import before workflow IDs were supplied](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/39753830543)
 - Private reporting PostgreSQL DDL: `sql/reporting-staging.sql`; tested separately on disposable PostgreSQL 16, **not applied to live n8n**.
+
+## Optimized reporting behavior
+
+- Reads native campaign inventory, then **five campaigns per scan** (rotating groups) instead of 40 campaigns' full recipient lists.
+- Uses native Chatwoot Get Metrics for delivered/read/sent/failed/skipped aggregate totals; uses native Get Recipients **Status = Failed** for exact failure-code frequencies only.
+- Runs manually first. Optional six-hour trigger is inactive until you publish/activate the NEW diagnostic. Uses one retry with 3-second spacing and 10-minute timeout.
+- A campaign returning 401/403/404 from feature-gated analytics is marked **BLOCKED**, not zero failed. Records with mismatched failure counts are also BLOCKED.
+- These checks **do not yet create durable per-recipient status storage or update EspoCRM**. They are deliberately separate from the future authenticated sending and reconciliation components.
