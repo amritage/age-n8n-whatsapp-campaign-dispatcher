@@ -8,9 +8,11 @@ assert.equal(got.maxPerCycle,2000);assert.equal(got.priority,0);assert.equal(got
 assert.throws(()=>readCampaign({...c,ageTemplateName:''},input),/Missing ageTemplateName/);
 assert.throws(()=>readCampaign(c,{portfolioId:'waba-1',verifiedInboxIds:['2']}),/allowlist/);
 assert.throws(()=>readCampaign({...c,ageSundayOff:null},input),/unknown/);
-const ok={authorizedAtomicReservation:true,memberCountVerified:true,templateApprovedVerified:true,title:'INTROMAHA-B001',message:'Approved template text',inboxId:'5',labelId:'38',scheduledAt:'2026-10-21T05:00:00Z',templateParams:{name:'confirmed-by-staging',language:'en'}};
+const ok={authorizedAtomicReservation:true,memberCountVerified:true,templateApprovedVerified:true,title:'INTROMAHA-B001',message:'Approved template text',inboxId:'5',labelId:'38',scheduledAt:'2026-10-21T05:00:00Z',approvedTemplateName:'confirmed-by-staging',approvedTemplateLanguage:'en',templateParams:{name:'confirmed-by-staging',language:'en',processed_params:{body:{'1':'Sample name'}}}};
 const payload=buildChatwootCampaign(ok);
 assert.deepEqual(payload.campaign.audience,[{type:'Label',id:38}]);assert.equal(payload.campaign.inbox_id,5);
 assert.throws(()=>buildChatwootCampaign({...ok,authorizedAtomicReservation:false}),/pre-send proof/);
 assert.throws(()=>buildChatwootCampaign({...ok,templateParams:null}),/Unverified/);
+assert.throws(()=>buildChatwootCampaign({...ok,templateParams:{name:'WRONG',language:'en',processed_params:{body:{'1':'Sample'}}}}),/mismatch/);
+assert.throws(()=>buildChatwootCampaign({...ok,templateParams:{name:'confirmed-by-staging',language:'en'}}),/processed_params/);
 console.log('PASS: existing EspoCRM field translation and gated native Chatwoot campaign payload');
