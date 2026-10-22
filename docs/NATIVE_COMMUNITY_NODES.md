@@ -18,20 +18,27 @@ Sources inspected on 2026-10-22:
 
 **Security note:** Installing a community package executes third-party code with n8n permissions. Review source and package permissions, keep a backup and **pin versions** rather than auto-updating on the production instance. n8n in queue mode may require the packages to be available on every worker that executes these workflows. Existing community nodes may already be installed under **different packages**; the new JSON references these exact two packages, and **is not interchangeable** with an older Chatwoot node of the same display name.
 
-## Corrected zero-ID workflow design (22 October 2026)
+## Optimized zero-ID workflows — production-safe read-only checks
 
-**No campaign ID, host URL or other operational value needs to be edited into a Code node.** You configure the installed EspoCRM and Chatwoot credentials **once** inside n8n; from then on the workflow discovers all matching campaigns directly.
+Both apps' node credentials are configured **once** in n8n. No campaign IDs, account IDs, host URLs or tokens belong in Code nodes.
 
-| File | Native node operations | Behavior |
+| Workflow | Primary operations | Cost / result |
 |---|---|---|
-| `workflows/age-api-readiness-native.json` | EspoCRM **Custom Entity → Get Many (Campaign, Return All)** → Chatwoot **Campaign → Get Many** | Independently lists the two campaign inventories; checks both connections; **does not assume that names or IDs match**. No HTTP Request nodes |
-| `workflows/age-chatwoot-recipient-report-native.json` | Chatwoot Campaign → **Get Many → Get Metrics → Get Recipients (Return All)** | Discovers the latest completed native WhatsApp one-off campaigns and retrieves their results without entering IDs. Supports manual run or an hourly schedule once activated and tested |
+| `workflows/age-api-readiness-native.json` | EspoCRM Custom Entity Get All Campaigns + Chatwoot Campaign Get All | Connection and inventory check; caps **displayed** inventory at 25 per app, while counting all discovered campaigns |
+| `workflows/age-chatwoot-recipient-report-native.json` | Chatwoot Campaign Get All → Campaign Get Metrics → Campaign Get Recipients **filtered to Failed** | Checks current/late campaigns in rotating groups of **5** per **6-hour** reporting window, aggregating delivered/read/sent/failed/skipped and Meta error-code frequency. Avoids downloading all successful recipient details each time |
 
-Only **completed** `one_off` campaigns whose inbox `channel_type` is `Channel::Whatsapp` enter the reporting step. Non-WhatsApp website campaigns and in-flight campaigns are excluded. There is a conservative cap of **40 completed native WhatsApp campaigns per run**: more produces `SAFE_SCAN_LIMIT_EXCEEDED` rather than quietly reporting incomplete coverage. This cap is a diagnostic safety bound, not a permanent reporting policy.
+Report selection includes **processing** WhatsApp one-offs and completed one-offs with completion times in the preceding **14 days**; old campaigns without completion timestamps remain discoverable until timestamp semantics are verified. A fixed 6-hour rotation cycles among all groups of five instead of permanently skipping every campaign beyond a cap. The most recent group can shift if campaigns are added, so this is a **bounded health diagnostic, not guaranteed durable exhaustive historical reconciliation**.
 
-**No Chatwoot campaign ID is present in EspoCRM until the new dispatcher creates a Chatwoot batch and records its returned display ID.** For future live operation the dispatcher **must record** `EspoCRM Campaign ID ↔ n8n cycle/batch ID ↔ Chatwoot campaign display ID ↔ recipients` in its private transaction ledger. Attempting to associate historical Chatwoot campaigns with EspoCRM by guessing their names would be unsafe.
+The workflow is **inactive until you explicitly activate it**. Manual Trigger works without activation. Six-hour schedule and 600-second timeout are configured; native API nodes retry once after 3 seconds on an error. Execution payload saving is disabled; credentials remain in n8n.
 
-**These current two workflows are read-only diagnostics**, not sending or persistent CRM event-sync workflows. The readiness workflow no longer checks the custom `AGECampaign/summary/:id` endpoint because it is per-campaign; this is a separately outstanding compatibility check, not silently proven by ordinary Campaign Get Many.
+If the Chatwoot account lacks `campaign_analytics` entitlement (enterprise feature), the workflow reports `BLOCKED` for that campaign, never invents delivery results or modifies records. The Chatwoot inventory can be checked independently of this entitlement.
+
+### Important workflow boundaries
+
+- The new reporter uses **metrics for success totals** and only **failed recipient analytics for error codes**; it does not collect a complete per-recipient delivered/read history. Detailed event-level CRM sync needs verified Meta message IDs, timestamps and an AGE attempt mapping.
+- CRM Campaign IDs and Chatwoot campaign display IDs are unrelated. No name-based guessing is permitted. Future sender must record its generated Chatwoot batch mappings explicitly.
+- No Chatwoot source changes, EspoCRM extension changes, new production databases or previous n8n workflow updates. **No sends are present.**
+- The custom AGE `/AGECampaign/summary/:id` endpoint is **not** checked by these native inventory nodes, so do not interpret inventory success as complete AGE extension API readiness.
 
 ## Installation and import (once per n8n installation)
 
