@@ -44,6 +44,8 @@ jobs:
         run: node tests/recipient-report-workflow.test.js
       - name: Check EspoCRM pagination and safe read-only campaign audit
         run: node tests/espo-audit-readonly.test.js
+      - name: Check native community-node workflow operation contracts
+        run: node tests/native-community-workflows.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
@@ -118,7 +120,7 @@ jobs:
     steps:
       - name: Checkout workflow files
         uses: actions/checkout@v4
-      - name: Import all four workflows into disposable n8n 2.37.9
+      - name: Import all six workflows into disposable n8n 2.37.9
         run: |
           set -euo pipefail
           docker run --rm \
