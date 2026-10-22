@@ -7,7 +7,8 @@
     "timezone": "Asia/Kolkata",
     "saveDataSuccessExecution": "none",
     "saveDataErrorExecution": "none",
-    "saveManualExecutions": false
+    "saveManualExecutions": false,
+    "executionTimeout": 600
   },
   "nodes": [
     {
@@ -55,7 +56,10 @@
         270
       ],
       "alwaysOutputData": true,
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9003",
@@ -63,6 +67,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
+        "mode": "runOnceForAllItems",
         "jsCode": "// Scan only current/late-changing native WhatsApp campaigns. No manual IDs.\nconst raw=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nif(raw.some(x=>x.error))return [{json:{hasCampaign:false,reason:'CHATWOOT_CAMPAIGN_LIST_UNAVAILABLE',availability:'BLOCKED'}}];\nconst now=Date.now(),windowDays=14,scanBatchSize=5,scanPeriodHours=6;\nconst earliest=now-windowDays*86400000;\nconst all=[];\nfor(const c of raw){\n  if(c.campaign_type!=='one_off'||c.inbox?.channel_type!=='Channel::Whatsapp')continue;\n  if(!['completed','processing'].includes(c.campaign_status))continue;\n  const stamp=Number(c.completed_at||c.started_at||0);\n  if(c.campaign_status==='completed' && stamp>0 && stamp*1000<earliest)continue;\n  const id=Number(c.id);\n  if(!Number.isSafeInteger(id)||id<1)throw new Error('Invalid WhatsApp campaign display ID');\n  all.push({id,title:String(c.title||'').slice(0,90),status:c.campaign_status,completedAt:c.completed_at??null,stamp});\n}\nall.sort((a,b)=>b.stamp-a.stamp||b.id-a.id);\nconst groups=Math.ceil(all.length/scanBatchSize);\nif(groups===0)return [{json:{hasCampaign:false,reason:'NO_RECENT_NATIVE_WHATSAPP_CAMPAIGNS',availability:'NO_DATA'}}];\n// Rotate in 6h windows. Cap API load while making EVERY group reachable eventually.\nconst slot=Math.floor(now/(scanPeriodHours*3600000)),group=slot%groups;\nconst selected=all.slice(group*scanBatchSize,(group+1)*scanBatchSize);\nreturn selected.map(c=>({json:{\n hasCampaign:true,campaignId:c.id,title:c.title,status:c.status,completedAt:c.completedAt,\n totalEligible:all.length,selectedCount:selected.length,scanGroup:group,scanGroups:groups,\n readOnly:true\n}}));"
       },
       "position": [
@@ -118,7 +123,10 @@
         160
       ],
       "continueOnFail": true,
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9010",
@@ -126,6 +134,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
+        "mode": "runOnceForAllItems",
         "jsCode": "// Metrics output loses its campaign ID; recover it from the COMMUNITY NODE'S input pairing.\n// Preserve 1:1 item pairing into failed-recipient lookup.\nconst selected=$('Select Recent Campaigns - Rotating Batches').all().map(x=>x.json).filter(x=>x.hasCampaign);\nconst items=$input.all(),seen=new Set(),out=[];\nfor(const x of items){\n const p=Array.isArray(x.pairedItem)?x.pairedItem[0]:x.pairedItem;\n if(!p||!Number.isInteger(p.item)||p.item<0||p.item>=selected.length)throw new Error('METRICS_INPUT_PAIRING_MISSING');\n const i=p.item;if(seen.has(i))throw new Error('DUPLICATE_METRICS_PAIRING');seen.add(i);\n const m=x.json||{};\n if(m.error||!Number.isSafeInteger(m.audience)){\n   out.push({json:{...selected[i],metricsAvailable:false,blockedReason:'CAMPAIGN_ANALYTICS_NOT_AVAILABLE',\n     failedExpected:null,counts:null},pairedItem:{item:i}});\n   continue;\n }\n const keys=['audience','sent','delivered','read','failed','skipped'];\n if(keys.some(k=>!Number.isSafeInteger(m[k])||m[k]<0))throw new Error('INVALID_ANALYTICS_COUNTERS');\n if(m.read>m.delivered||m.delivered>m.audience||m.failed>m.audience)throw new Error('CONTRADICTORY_ANALYTICS_COUNTERS');\n out.push({json:{...selected[i],metricsAvailable:true,failedExpected:m.failed,\n   counts:{audience:m.audience,sent:m.sent,deliveredIncludingRead:m.delivered,read:m.read,failed:m.failed,skipped:m.skipped}},\n   pairedItem:{item:i}});\n}\nif(seen.size!==selected.length)throw new Error('INCOMPLETE_METRICS_RESPONSES');\nreturn out;"
       },
       "position": [
@@ -152,7 +161,10 @@
         160
       ],
       "continueOnFail": true,
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
     },
     {
       "id": "e76a5cc2-d148-4b49-9df7-5633ae1b9007",
@@ -160,6 +172,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
+        "mode": "runOnceForAllItems",
         "jsCode": "// Failed-recipient API is filtered at source. Verify failure count and do not expose PII.\nconst metadata=$('Attach Campaign Context to Metrics').all().map(x=>x.json);\nconst failed=new Map(),blocked=new Set();\nconst list=$input.all();\nfor(const item of list){\n const raw=item.json||{};\n // n8n may emit one *unpaired* empty item if the entire failed-only query has no matches.\n if(Object.keys(raw).length===0 && !item.pairedItem)continue;\n const p=Array.isArray(item.pairedItem)?item.pairedItem[0]:item.pairedItem;\n if(!p||!Number.isInteger(p.item)||p.item<0||p.item>=metadata.length)\n   throw new Error('RECIPIENT_CAMPAIGN_PAIRING_MISSING');\n const idx=p.item;\n if(!failed.has(idx))failed.set(idx,[]);\n if(raw.error){blocked.add(idx);continue;}\n if(Object.keys(raw).length===0)continue; // zero failed recipients for this campaign\n if(raw.status!=='failed')throw new Error('UNFILTERED_RECIPIENT_RESPONSE');\n const id=Number(raw.contact?.id);\n if(!Number.isSafeInteger(id)||id<1)throw new Error('MISSING_CONTACT_ID');\n failed.get(idx).push({id,code:raw.error_code==null?'UNKNOWN':String(raw.error_code)});\n}\nconst reports=[];\nfor(let idx=0;idx<metadata.length;idx++){\n const c=metadata[idx],rows=failed.get(idx)||[],seen=new Set(),codes={};\n if(c.metricsAvailable){\n   for(const r of rows){\n     if(seen.has(r.id))throw new Error('DUPLICATE_FAILED_CONTACT');\n     seen.add(r.id);\n     if(!/^(UNKNOWN|[0-9]{3,8})$/.test(r.code))throw new Error('INVALID_META_ERROR_CODE');\n     codes[r.code]=(codes[r.code]||0)+1;\n   }\n }\n let status='PASS',reason=null;\n if(!c.metricsAvailable){status='BLOCKED';reason=c.blockedReason;}\n else if(blocked.has(idx)){status='BLOCKED';reason='RECIPIENT_ANALYTICS_NOT_AVAILABLE';}\n else if(rows.length!==c.failedExpected){status='BLOCKED';reason='FAILED_RECIPIENT_COUNT_MISMATCH';}\n reports.push({chatwootCampaignId:c.campaignId,title:c.title,campaignStatus:c.status,\n   status,reason,counts:c.counts,errorCodeCounts:status==='PASS'?codes:null,\n   verifiedCrmMapping:false,crmEventWriteAuthorized:false});\n}\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',\n status:reports.some(r=>r.status==='BLOCKED')?'PARTIAL_OR_BLOCKED':'PASS',\n scan:{selected:metadata.length,eligible:metadata[0]?.totalEligible||0,group:metadata[0]?.scanGroup||0,groups:metadata[0]?.scanGroups||0},\n reports,crmEventWriteAuthorized:false,sendAttempted:false,\n note:'Chatwoot provider IDs/times and EspoCRM batch mappings are not available from this analytics API.'}}];"
       },
       "position": [
@@ -173,6 +186,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
+        "mode": "runOnceForAllItems",
         "jsCode": "const x=$input.first().json;return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',status:x.availability==='BLOCKED'?'BLOCKED':'NO_DATA',reason:x.reason||'NO_DATA',reports:[],crmEventWriteAuthorized:false,sendAttempted:false}}];"
       },
       "position": [
