@@ -1,0 +1,81 @@
+{
+  "id": "AGEcwFindCampaigns26",
+  "name": "AGE - Find Existing Chatwoot Campaign IDs - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "ab76dc33-f79e-4000-ae60-88767b892001",
+      "name": "Manual Trigger",
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll"
+      },
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "id": "ab76dc33-f79e-4000-ae60-88767b892002",
+      "name": "Chatwoot - Campaign Get Many",
+      "position": [
+        480,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Output only campaign metadata, never contacts, templates, phone numbers or message content.\nconst items=$input.all().map(x=>x.json);\nconst records=items.length===1&&Array.isArray(items[0].payload)?items[0].payload:items.length===1&&Array.isArray(items[0].campaigns)?items[0].campaigns:items;\nconst known=[];\nfor(const row of records){\n  if(!row||Object.keys(row).length===0)continue;\n  const rawId=row.id??row.display_id;\n  const id=Number(rawId);\n  if(!Number.isSafeInteger(id)||id<=0)throw new Error('Chatwoot returned campaign without a valid numeric display ID');\n  known.push({id,type:row.campaign_type??null,status:row.campaign_status??null,title:typeof row.title==='string'?row.title.slice(0,90):null});\n}\nknown.sort((a,b)=>b.id-a.id);\nreturn [{json:{mode:'READ_ONLY',campaignCount:known.length,campaigns:known,notice:known.length?'Use an existing native WhatsApp one-off campaign ID from this list in the recipient-report workflow.':'No Chatwoot campaigns found. Do not invent an ID or create a live campaign just for this test.',sendingEnabled:false}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "ab76dc33-f79e-4000-ae60-88767b892003",
+      "name": "Show Campaign IDs Only",
+      "position": [
+        720,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Campaign Get Many",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Campaign Get Many": {
+      "main": [
+        [
+          {
+            "node": "Show Campaign IDs Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
