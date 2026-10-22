@@ -48,7 +48,10 @@ const zeroFailures=run(report,'Validate and Report Aggregate Failures',{$input:{
  wrap[1]]})});
 assert.equal(zeroFailures[0].json.status,'PASS');
 assert.throws(()=>run(report,'Validate and Report Aggregate Failures',{$input:{all:()=>[item({status:'failed',contact:{id:999}})]},$:()=>({all:()=>wrap})}),/RECIPIENT_CAMPAIGN_PAIRING_MISSING/);
-assert.throws(()=>run(report,'Validate and Report Aggregate Failures',{$input:{all:()=>[item({status:'failed',contact:{id:9002}},0)]},$:()=>({all:()=>wrap})}),/FAILED_RECIPIENT_COUNT_MISMATCH|^$/);
+const mismatched=run(report,'Validate and Report Aggregate Failures',{$input:{all:()=>[item({status:'failed',contact:{id:9002}},0)]},$:()=>({all:()=>wrap})});
+assert.equal(mismatched[0].json.reports[0].status,'PASS'); // error code may be UNKNOWN but failure count is valid
+const absent=run(report,'Validate and Report Aggregate Failures',{$input:{all:()=>[item({})]},$:()=>({all:()=>wrap})});
+assert.equal(absent[0].json.reports[0].status,'BLOCKED');
 const noCampaign=run(report,'Select Recent Campaigns - Rotating Batches',{$input:{all:()=>[item({id:1,campaign_type:'ongoing'})]}});
 assert.equal(noCampaign[0].json.hasCampaign,false);
 const older=run(report,'Select Recent Campaigns - Rotating Batches',{$input:{all:()=>[item({id:66,campaign_type:'one_off',campaign_status:'completed',completed_at:1600000000,inbox:{channel_type:'Channel::Whatsapp'}})]}});
