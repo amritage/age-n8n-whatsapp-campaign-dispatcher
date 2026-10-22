@@ -1,0 +1,188 @@
+{
+  "id": "AGEespoCwNativeV1",
+  "name": "AGE - Native EspoCRM and Chatwoot API Readiness - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa001",
+      "name": "Manual Trigger - Native API Readiness",
+      "position": [
+        180,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fill only NON-SECRET IDs and the EspoCRM URL used by the single custom AGE summary GET.\n// All normal records are read with @traien/n8n-nodes-espocrm@1.4.0 and\n// @renatoascencio/n8n-nodes-chatwoot@0.9.0. NO contact/campaign sends.\nconst cfg={\n  espoCampaignId:'REPLACE_ESPO_CAMPAIGN_ID',\n  chatwootCampaignDisplayId:'REPLACE_CHATWOOT_DISPLAY_ID',\n  espoUrl:'https://REPLACE_ESPO_HOST',\n};\nif(!cfg.espoCampaignId||cfg.espoCampaignId.includes('REPLACE_')||\n   !/^[1-9][0-9]*$/.test(cfg.chatwootCampaignDisplayId)||\n   cfg.espoUrl.includes('REPLACE_'))throw new Error('CONFIG_REQUIRED: set non-secret EspoCRM Campaign ID, Chatwoot display ID, and EspoCRM HTTPS URL');\nif(new URL(cfg.espoUrl).protocol!=='https:')throw new Error('HTTPS required');\nreturn [{json:{...cfg,chatwootCampaignId:Number(cfg.chatwootCampaignDisplayId)}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa002",
+      "name": "Configure IDs - No Secrets",
+      "position": [
+        420,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "customEntity",
+        "operation": "get",
+        "entityType": "Campaign",
+        "id": "={{ $('Configure IDs - No Secrets').first().json.espoCampaignId }}"
+      },
+      "type": "@traien/n8n-nodes-espocrm.espoCrm",
+      "typeVersion": 1,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa003",
+      "name": "EspoCRM - Get Campaign",
+      "position": [
+        670,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Configure IDs - No Secrets').first().json.espoUrl.replace(/\\/$/,'') + '/api/v1/AGECampaign/summary/' + encodeURIComponent($('Configure IDs - No Secrets').first().json.espoCampaignId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa004",
+      "name": "AGE Custom Summary - HTTP Fallback",
+      "position": [
+        920,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "get",
+        "campaignId": "={{ $('Configure IDs - No Secrets').first().json.chatwootCampaignId }}"
+      },
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa005",
+      "name": "Chatwoot - Get Campaign",
+      "position": [
+        1170,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getMetrics",
+        "campaignId": "={{ $('Configure IDs - No Secrets').first().json.chatwootCampaignId }}"
+      },
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa006",
+      "name": "Chatwoot - Get Campaign Metrics",
+      "position": [
+        1420,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crm=$('EspoCRM - Get Campaign').first().json;\nconst summary=$('AGE Custom Summary - HTTP Fallback').first().json;\nconst chatwoot=$('Chatwoot - Get Campaign').first().json;\nconst metrics=$('Chatwoot - Get Campaign Metrics').first().json;\nif(!crm||!crm.id||!summary||typeof summary!=='object'||!chatwoot||typeof chatwoot!=='object'||!Number.isInteger(metrics.audience))throw new Error('One of the authenticated read-only API responses is incomplete');\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',\n espoCampaignReadable:true,espoCampaignActive:crm.status==='Active',\n ageCustomSummaryReadable:true,chatwootCampaignReadable:true,\n chatwootAnalyticsReadable:true,chatwootAudienceCount:metrics.audience,\n chatwootDelivered:metrics.delivered??null,\n chatwootFailed:metrics.failed??null,\n crmEventWriteAuthorized:false,liveSendAttempted:false}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "id": "9bd2edc7-9914-4ba9-9fc6-143be3cfa007",
+      "name": "Summarize Readiness - Aggregate Only",
+      "position": [
+        1670,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger - Native API Readiness": {
+      "main": [
+        [
+          {
+            "node": "Configure IDs - No Secrets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure IDs - No Secrets": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Get Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EspoCRM - Get Campaign": {
+      "main": [
+        [
+          {
+            "node": "AGE Custom Summary - HTTP Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGE Custom Summary - HTTP Fallback": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Get Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Get Campaign": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Get Campaign Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Get Campaign Metrics": {
+      "main": [
+        [
+          {
+            "node": "Summarize Readiness - Aggregate Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
