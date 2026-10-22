@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {checkCompatibility}=require('../src/chatwoot-compatibility');
+let old=checkCompatibility({version:'4.17.1',analyticsProbe:'PASS',operations:{complete:true}});
+assert.equal(old.nativeCampaignBatchingVerified,false);
+assert(old.reasons.includes('CHATWOOT_4_17_1_NO_100_CONTACT_BACKGROUND_BATCH_JOB'));
+assert.equal(old.automaticSendingReady,false);
+let newer=checkCompatibility({version:'v4.19.0',analyticsProbe:'PASS',operations:{complete:true}});
+assert.equal(newer.nativeCampaignBatchingVerified,true);
+assert.equal(newer.campaignAnalyticsVerified,true);
+assert.equal(newer.automaticSendingReady,false);
+assert(newer.reasons.includes('EXPLICIT_LIVE_RELEASE_APPROVAL_REQUIRED'));
+let unknown=checkCompatibility({});
+assert.equal(unknown.automaticSendingReady,false);
+assert(unknown.reasons.includes('INSTALLED_CHATWOOT_VERSION_UNVERIFIED'));
+assert(unknown.reasons.includes('CAMPAIGN_ANALYTICS_NOT_PROVEN'));
+assert.equal(checkCompatibility({version:'4.18.7',analyticsProbe:'PASS'}).nativeCampaignBatchingVerified,false);
+console.log('PASS: Chatwoot v4.17.1 vs 4.19.0 version gate, unknown versions blocked, live always requires separate approval');
