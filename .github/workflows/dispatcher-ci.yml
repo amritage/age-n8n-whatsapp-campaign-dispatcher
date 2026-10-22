@@ -46,6 +46,8 @@ jobs:
         run: node tests/espo-audit-readonly.test.js
       - name: Check native community-node workflow operation contracts
         run: node tests/native-community-workflows.test.js
+      - name: Run actual Code-node auto-discovery and cross-campaign mapping fixtures
+        run: node tests/auto-discovery-runtime.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
@@ -120,7 +122,7 @@ jobs:
     steps:
       - name: Checkout workflow files
         uses: actions/checkout@v4
-      - name: Import all six workflows into disposable n8n 2.37.9
+      - name: Import all workflow JSON files into disposable n8n 2.37.9
         run: |
           set -euo pipefail
           docker run --rm \
