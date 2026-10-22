@@ -50,3 +50,7 @@ For durable individual reporting, `sql/reporting-staging.sql` is a **separate, p
 - `workflows/age-chatwoot-recipient-report-native.json`: `Manual → Config Gate → Chatwoot Campaign:Get Metrics → Chatwoot Campaign:Get Recipients (Return All) → safe totals`. No HTTP or mutations. The Chatwoot community node internally paginates the Enterprise campaign analytics endpoint.
 
 See [NATIVE_COMMUNITY_NODES.md](NATIVE_COMMUNITY_NODES.md) for exact packages, versions, setup, credential assignments and risks. The HTTP-only originals remain available. No actual installed-instance tests or provider sends have been performed. The core multi-campaign sender is not ready for LIVE merely because the diagnostic nodes import successfully.
+
+## 2026-10-22 optimisation superseding earlier Workflow 6 description
+
+The preferred `age-chatwoot-recipient-report-native.json` now uses **five rotating recent campaigns per six-hour scan**, reads only failure recipients, and uses metrics for aggregate delivered/read/sent outcomes. Failure/feature-403 conditions are explicitly represented as BLOCKED; report rows never become CRM events without verified provider evidence. Native API nodes retry once after 3s; overall n8n workflow times out after 10min. See `docs/NATIVE_COMMUNITY_NODES.md` for final behavior; earlier references to hourly, 40 batches or all-recipient fetching in this document are historical.
