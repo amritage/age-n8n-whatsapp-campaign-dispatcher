@@ -11,6 +11,16 @@
 **Start with just the two manual, GET-only diagnostic workflows** documented in [N8N_IMPORT_AND_VALIDATION.md](docs/N8N_IMPORT_AND_VALIDATION.md). Their four-workflow package passed actual **n8n 2.37.9 CLI import**, but only the two read-only diagnostics are worth importing now. The multi-campaign controller and status-sync scheduler are intentionally non-sending design shells, **not a finished live dispatcher**. The two diagnostics need secure instance credentials and an existing Chatwoot campaign ID; no production API call has been run from this development session.
 
 
+## Current import recommendation — automatic campaign discovery (22 October 2026)
+
+**Use the revised native-node workflows: no campaign ID or host URL is entered manually.** Connect each installed native EspoCRM/Chatwoot credential once.
+
+- [Auto-discover EspoCRM and Chatwoot campaigns](workflows/age-api-readiness-native.json): native EspoCRM `Campaign → Get Many` and Chatwoot `Campaign → Get Many`, with independent inventories and no HTTP Request nodes.
+- [Auto-report completed native Chatwoot WhatsApp campaigns](workflows/age-chatwoot-recipient-report-native.json): native Chatwoot `Get Many → Get Metrics → Get Recipients`, with accurate per-campaign recipient-status attribution checks. Includes a disabled-by-default hourly trigger (only executes on activation) and a manual trigger.
+- [Latest zero-ID import instructions](docs/N8N_IMPORT_AND_VALIDATION.md). The previous `CONFIG_REQUIRED: enter ... ID` diagnostic versions are **superseded**; previously imported copies do **not update automatically**. Reimport the latest files as new workflows.
+- Chatwoot ↔ EspoCRM campaigns cannot be safely matched by name alone; future native sends must persist the explicit batch-to-campaign mapping. **No live sends or CRM event writes are present** in these diagnostics.
+
+
 ## Business outcome
 
 Send relevant fabric updates and offers to eligible business buyers with predictable pacing, reliable delivery accounting, and easy-to-audit records. Support contacts, leads, accounts, fabric manufacturers' buyers, trading firms, importers and exporters. A campaign must never be optimized for volume at the expense of customer preference, delivery quality, or accurate records.
