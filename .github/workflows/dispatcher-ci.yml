@@ -38,6 +38,10 @@ jobs:
         run: node tests/campaign-contract.test.js
       - name: Validate manual read-only EspoCRM and Chatwoot probe
         run: node tests/readiness-workflow.test.js
+      - name: Check real Chatwoot paginated read-only API adapter
+        run: node tests/read-only-reconciliation.test.js
+      - name: Check n8n read-only recipient report safety
+        run: node tests/recipient-report-workflow.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
@@ -50,3 +54,58 @@ jobs:
             echo 'Synthetic unit tests only; no production credentials or customer sends.'
             echo 'Details in each step. Long-term state: reports/TEST_LOG.md.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  postgres-report-schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: age_ci
+          POSTGRES_PASSWORD: test_only_ci_password
+          POSTGRES_DB: age_dispatcher_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U age_ci -d age_dispatcher_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: age_ci
+      PGPASSWORD: test_only_ci_password
+      PGDATABASE: age_dispatcher_test
+    steps:
+      - name: Checkout schema
+        uses: actions/checkout@v4
+      - name: Ensure PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+      - name: Apply reporting schema twice (idempotence)
+        run: |
+          psql -v ON_ERROR_STOP=1 -f sql/reporting-staging.sql
+          psql -v ON_ERROR_STOP=1 -f sql/reporting-staging.sql
+      - name: Verify recipient report constraints with synthetic IDs
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO age_campaign_reporting.batch
+          (batch_id,espo_campaign_id,chatwoot_account_id,chatwoot_campaign_display_id,expected_recipients)
+          VALUES ('synthetic-batch','synthetic-crm-campaign',2,100,2);
+          INSERT INTO age_campaign_reporting.recipient_status
+          (batch_id,chatwoot_contact_id,espo_recipient_id,status,error_code)
+          VALUES ('synthetic-batch',1001,'synthetic-recipient-1','delivered',null);
+          INSERT INTO age_campaign_reporting.recipient_status
+          (batch_id,chatwoot_contact_id,espo_recipient_id,status,error_code)
+          VALUES ('synthetic-batch',1002,'synthetic-recipient-2','failed','131049');
+          DO $$
+          BEGIN
+            IF (SELECT count(*) FROM age_campaign_reporting.recipient_status WHERE batch_id='synthetic-batch') <> 2 THEN
+              RAISE EXCEPTION 'Reporting projection persistence failed';
+            END IF;
+          END $$;
+          SQL
