@@ -58,6 +58,8 @@ jobs:
         run: node tests/two-perspective-release-audit.test.js
       - name: Verify merged 6-hour operational health and business-rule safeguards
         run: node tests/merged-health-workflow.test.js
+      - name: Validate CSV demo imports match n8n Data Table schema
+        run: node tests/demo-datatables-csv.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
