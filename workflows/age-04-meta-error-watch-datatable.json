@@ -1,0 +1,121 @@
+{
+  "id": "AGEdtErrors26v1",
+  "name": "AGE DT-04 - Meta Error Summary via n8n Data Tables",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "bc000000-0000-4000-8000-400000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-400000000002",
+      "name": "Schedule Every 6 Hours - Activate After Testing",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        390
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-400000000003",
+      "name": "Data Table - Read Lightweight Events",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AGE_Dispatcher_Events"
+        },
+        "returnAll": true
+      },
+      "position": [
+        480,
+        280
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "bc000000-0000-4000-8000-400000000004",
+      "name": "Summarize Recorded Meta Codes - No Writes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const rows=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(rows.some(x=>x.error))return [{json:{mode:'READ_ONLY',status:'BLOCKED',reason:'DATA_TABLE_EVENTS_UNAVAILABLE',canSend:false}}];\nif(rows.length>3000)throw new Error('TOO_MANY_LIGHTWEIGHT_EVENTS_USE_ROLLUPS');\nconst now=Date.now(),summary=new Map();let included=0;\nfor(const x of rows){\n  const code=String(x.errorCode||'');\n  const at=Date.parse(x.occurredAt);\n  if(!/^[0-9]{5,6}$/.test(code)||!Number.isFinite(at)||at>now||now-at>30*86400000)continue;\n  const count=x.count==null?1:Number(x.count);\n  if(!Number.isSafeInteger(count)||count<0)throw new Error('INVALID_EVENT_AGGREGATE_COUNT');\n  summary.set(code,(summary.get(code)||0)+count);included++;\n}\nconst policies={\n '131050':'MARKETING_OPT_OUT_DO_NOT_AUTO_RETRY',\n '131048':'QUALITY_RESTRICTION_REVIEW_AND_PAUSE',\n '131049':'PER_RECIPIENT_MARKETING_HOLD_USE_EXISTING_CRM_RETRY',\n '131026':'UNDELIVERABLE_UNKNOWN_NOT_UNREGISTERED',\n '130472':'MARKETING_EXPERIMENT_REVIEW',\n '132015':'TEMPLATE_QUALITY_HOLD'\n};\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',\n result:included?'AGGREGATED_RECORDED_EVENTS':'NO_RECENT_RECORDED_EVENTS',\n recordsIncluded:included,byCode:[...summary].map(([code,count])=>({code,count,policy:policies[code]||'REQUIRES_MANUAL_CLASSIFICATION'})),\n source:'AGE_Dispatcher_Events n8n Data Table; NOT an independently complete provider ledger',\n marketingSuppressionApplied:false,canSend:false}}];"
+      },
+      "position": [
+        780,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Lightweight Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Every 6 Hours - Activate After Testing": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Lightweight Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Read Lightweight Events": {
+      "main": [
+        [
+          {
+            "node": "Summarize Recorded Meta Codes - No Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
