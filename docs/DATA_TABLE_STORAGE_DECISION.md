@@ -1,3 +1,5 @@
+> **2026-10-23 consolidation:** Data Table storage decision remains valid, but the operational imports are now reduced to [three workflows](SIMPLIFIED_THREE_WORKFLOW_DEPLOYMENT.md). Previous individual WF-02/04/05/06 files are retained only as standalone reference variants.
+
 # Decision: n8n-managed Data Tables as the default operational store (23 October 2026)
 
 ## Decision
