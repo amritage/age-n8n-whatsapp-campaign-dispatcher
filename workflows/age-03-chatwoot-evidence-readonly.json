@@ -1,0 +1,119 @@
+{
+  "id": "AGEwf03Evidence26V",
+  "name": "AGE 03 - Chatwoot v4.19 Read-Only Database Evidence Audit",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "af030000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "af030000-0000-4000-8000-000000000002",
+      "name": "Schedule - Every 6 Hours (Inactive Until Enabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        400
+      ]
+    },
+    {
+      "id": "af030000-0000-4000-8000-000000000003",
+      "name": "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        460,
+        300
+      ],
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- STRICT READ ONLY: use dedicated Chatwoot SELECT-only database role.\n-- Chatwoot Enterprise v4.19 campaign_recipients.status is integer 0..5.\nSELECT c.account_id, c.display_id AS campaign_display_id,\n       COUNT(*)::integer AS audience,\n       COUNT(*) FILTER (WHERE cr.status=0)::integer AS queued,\n       COUNT(*) FILTER (WHERE cr.status=1)::integer AS skipped,\n       COUNT(*) FILTER (WHERE cr.status=2)::integer AS sent,\n       COUNT(*) FILTER (WHERE cr.status=3)::integer AS delivered,\n       COUNT(*) FILTER (WHERE cr.status=4)::integer AS read,\n       COUNT(*) FILTER (WHERE cr.status=5)::integer AS failed,\n       COUNT(*) FILTER (WHERE cr.source_id LIKE 'wamid.%')::integer AS candidate_wamid_count,\n       COUNT(*) FILTER (WHERE cr.status=5 AND cr.error_code='131050')::integer AS marketing_optout_count,\n       MAX(cr.updated_at) AS last_event_update\nFROM campaign_recipients cr\nJOIN campaigns c ON c.id=cr.campaign_id AND c.account_id=cr.account_id\nWHERE cr.updated_at >= now()-interval '14 days'\n  AND c.campaign_type=1\nGROUP BY c.account_id, c.display_id\nORDER BY MAX(cr.updated_at) DESC LIMIT 201;",
+        "options": {
+          "queryBatching": "single",
+          "largeNumbersOutput": "text"
+        }
+      }
+    },
+    {
+      "id": "af030000-0000-4000-8000-000000000004",
+      "name": "Validate Provider Evidence Without CRM Writes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Provider Meta message ID semantics cannot be assumed from matching a wamid prefix.\nconst raw=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nif(raw.some(x=>x.error))return [{json:{mode:'READ_ONLY',result:'BLOCKED',\n reason:'CHATWOOT_ENTERPRISE_RECIPIENT_TABLE_OR_SELECT_PERMISSION_UNAVAILABLE',crmEventWriteAuthorized:false}}];\nif(raw.length>200)throw Error('EVIDENCE_QUERY_LIMIT_REACHED_REFINE_TIME_WINDOW');\nconst out=raw.map(r=>{\n const statuses={queued:Number(r.queued)||0,skipped:Number(r.skipped)||0,\n  sent:Number(r.sent)||0,delivered:Number(r.delivered)||0,read:Number(r.read)||0,failed:Number(r.failed)||0};\n const n=Number(r.audience)||0;\n if(Object.values(statuses).reduce((a,b)=>a+b,0)!==n)throw Error('CHATWOOT_STATUS_TOTAL_MISMATCH');\n return {accountId:r.account_id,campaignDisplayId:r.campaign_display_id,audience:n,\n  counts:statuses,candidateWamidCount:Number(r.candidate_wamid_count)||0,\n  marketingOptOutFailures:Number(r.marketing_optout_count)||0,lastUpdate:r.last_event_update};\n});\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:out.length?'EVIDENCE_CANDIDATES':'NO_DATA',\n reports:out,providerMessageIdSemanticsVerified:false,crmAttemptMappingVerified:false,\n crmEventWriteAuthorized:false,note:'Database candidate WAMIDs and event timestamps still require exact reconciliation to AGE attempt IDs.'}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 6 Hours (Inactive Until Enabled)": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence": {
+      "main": [
+        [
+          {
+            "node": "Validate Provider Evidence Without CRM Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
