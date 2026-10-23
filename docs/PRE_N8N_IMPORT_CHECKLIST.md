@@ -1,3 +1,5 @@
+> **SUPERSEDED IMPORT COUNT (23 October 2026):** This document's seven-workflow ordering is the earlier modular variant. The [latest recommended **three-workflow** import guide](SIMPLIFIED_THREE_WORKFLOW_DEPLOYMENT.md) replaces that list. Do not activate both the 6-hour unified monitor and the old five standalone monitors.
+
 # Pre-import release checklist — AGE n8n-managed Data Tables pack
 **Date:** 23 October 2026 (Asia/Kolkata). **Target:** n8n 2.37.9 queue mode, Chatwoot 4.19.0, EspoCRM with existing AGE Campaign Management. **Branch:** main.
 
