@@ -50,6 +50,8 @@ jobs:
         run: node tests/auto-discovery-runtime.test.js
       - name: Check Chatwoot installed-version compatibility and fail-closed live gate
         run: node tests/chatwoot-compatibility.test.js
+      - name: Test 2026 platform research workflow pack without provider writes
+        run: node tests/new-platform-workflows.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
@@ -98,6 +100,49 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f sql/reporting-staging.sql
           psql -v ON_ERROR_STOP=1 -f sql/reporting-staging.sql
+      - name: Apply guarded dispatcher PostgreSQL control schema twice
+        run: |
+          psql -v ON_ERROR_STOP=1 -f sql/dispatcher-control-plane.sql
+          psql -v ON_ERROR_STOP=1 -f sql/dispatcher-control-plane.sql
+      - name: Assert default denial, 26h gap and missing tier evidence
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO age_dispatcher.portfolio(portfolio_id) VALUES ('test-portfolio');
+          DO $
+          DECLARE reason_code text;
+          BEGIN
+            SELECT reason INTO reason_code FROM age_dispatcher.preflight_view WHERE portfolio_id='test-portfolio';
+            IF reason_code <> 'MASTER_DISABLED' THEN
+              RAISE EXCEPTION 'Fail-closed default changed: %',reason_code;
+            END IF;
+          END $;
+          UPDATE age_dispatcher.portfolio SET master_sending_enabled=true,
+            operator_live_approved=true,provider_analytics_verified=true,account_health_verified=true,
+            messaging_tier=2000,tier_verified_at=now(),quality_verified_at=now(),
+            external_usage_verified_at=now(),external_unique_24h=0,unresolved_external_sends=false,
+            last_verified_cycle_completed_at=now()-interval '25 hours'
+          WHERE portfolio_id='test-portfolio';
+          DO $
+          BEGIN
+            IF (SELECT reason FROM age_dispatcher.preflight_view WHERE portfolio_id='test-portfolio')
+                 <> 'GLOBAL_26_HOUR_GAP' THEN
+              RAISE EXCEPTION '26-hour guard not enforced';
+            END IF;
+          END $;
+          UPDATE age_dispatcher.portfolio SET last_verified_cycle_completed_at=now()-interval '27 hours',
+            external_usage_verified_at=now()-interval '25 hours'
+          WHERE portfolio_id='test-portfolio';
+          DO $
+          BEGIN
+            IF (SELECT reason FROM age_dispatcher.preflight_view WHERE portfolio_id='test-portfolio')
+                 <> 'EXTERNAL_USAGE_UNKNOWN_OR_STALE' THEN
+              RAISE EXCEPTION 'External usage freshness not enforced';
+            END IF;
+            IF (SELECT can_send FROM age_dispatcher.preflight_view WHERE portfolio_id='test-portfolio') THEN
+              RAISE EXCEPTION 'Read-only preflight must NEVER authorize sends';
+            END IF;
+          END $;
+          SQL
       - name: Verify recipient report constraints with synthetic IDs
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
