@@ -1,3 +1,5 @@
+> **Storage design update — 23 October 2026:** Use the [n8n-managed Data Tables design and SQL-free import guide](DATA_TABLE_STORAGE_DECISION.md) for new diagnostics. The earlier custom PostgreSQL schema and Postgres WF-02/WF-04/WF-05/WF-06 are now **optional advanced/legacy examples**, not required for the recommended import. Managed Data Tables are not atomic locks; all these workflows remain non-sending.
+
 # AGE n8n import checklist — pre-production READ-ONLY diagnostics
 
 Status: import-verified on **n8n 2.37.9** in temporary GitHub Actions container; user production connection NOT tested; no send capability enabled.
