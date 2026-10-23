@@ -58,7 +58,8 @@
       "alwaysOutputData": true,
       "retryOnFail": true,
       "maxTries": 2,
-      "waitBetweenTries": 3000
+      "waitBetweenTries": 3000,
+      "continueOnFail": true
     },
     {
       "id": "af000000-0000-4000-8000-000000000004",
@@ -67,7 +68,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const rows=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nconst all=rows.filter(c=>c.campaign_type==='one_off'&&c.inbox?.channel_type==='Channel::Whatsapp');\nconst completed=all.filter(c=>c.campaign_status==='completed');\ncompleted.sort((a,b)=>(Number(b.completed_at)||0)-(Number(a.completed_at)||0)||Number(b.id)-Number(a.id));\nconst pick=completed[0]||all[0];\nif(!pick)return [{json:{found:false,reason:'NO_NATIVE_WHATSAPP_CAMPAIGN_TO_TEST',tested:false}}];\nconst id=Number(pick.id);\nif(!Number.isSafeInteger(id)||id<1)throw Error('INVALID_CHATWOOT_CAMPAIGN_ID');\nreturn [{json:{found:true,campaignId:id,campaignStatus:pick.campaign_status,kind:pick.campaign_type,readOnly:true}}];"
+        "jsCode": "const rows=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(rows.some(x=>x.error))return [{json:{found:false,reason:'CHATWOOT_CAMPAIGN_LIST_UNAVAILABLE',tested:false}}];\nconst all=rows.filter(c=>c.campaign_type==='one_off'&&c.inbox?.channel_type==='Channel::Whatsapp');\nconst completed=all.filter(c=>c.campaign_status==='completed');\ncompleted.sort((a,b)=>(Number(b.completed_at)||0)-(Number(a.completed_at)||0)||Number(b.id)-Number(a.id));\nconst pick=completed[0]||all[0];\nif(!pick)return [{json:{found:false,reason:'NO_NATIVE_WHATSAPP_CAMPAIGN_TO_TEST',tested:false}}];\nconst id=Number(pick.id);\nif(!Number.isSafeInteger(id)||id<1)throw Error('INVALID_CHATWOOT_CAMPAIGN_ID');\nreturn [{json:{found:true,campaignId:id,campaignStatus:pick.campaign_status,kind:pick.campaign_type,readOnly:true}}];"
       },
       "position": [
         680,
@@ -148,7 +149,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:'UNVERIFIED',reason:'NO_NATIVE_WHATSAPP_CAMPAIGN_TO_TEST',canSend:false}}];"
+        "jsCode": "const x=$input.first()?.json||{};const unavailable=x.reason==='CHATWOOT_CAMPAIGN_LIST_UNAVAILABLE';return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:unavailable?'BLOCKED':'UNVERIFIED',reason:x.reason||'NO_NATIVE_WHATSAPP_CAMPAIGN_TO_TEST',canSend:false,crmEventWriteAuthorized:false}}];"
       },
       "position": [
         1130,
