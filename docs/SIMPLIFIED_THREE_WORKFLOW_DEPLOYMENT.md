@@ -1,4 +1,6 @@
-# Simplified AGE Dispatcher diagnostics — 3 workflows, 2 recurring schedules
+# Simplified AGE Dispatcher diagnostics — 3 workflows, 2 recurring schedules> **CSV-first setup alternative:** Instead of running the one-time Data Tables setup workflow, you can import the two sample CSV files in [n8n Data Tables demo import instructions](../examples/n8n-data-tables/README.md). This creates the required named managed tables (20 portfolio and 34 event synthetic scenarios). Confirm the exact column types and delete synthetic records after testing. **Do not run setup again if both tables already exist correctly.** This changes the required import count from three JSON files to **two** (the six-hour unified monitor and daily analytics probe) plus two CSV imports.
+
+
 **Decision:** 23 October 2026. Targets: n8n 2.37.9 queue mode, Chatwoot v4.19.0, EspoCRM and built-in n8n Data Tables.
 
 ## Recommended import list (only 3 files)
