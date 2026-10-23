@@ -21,6 +21,20 @@
 - No supposed last Chatwoot campaign completion or Chatwoot analytics count is equated with verified Meta delivery/event evidence. A non-empty Data Table row does not prove recipient consent, template approval or a matching CRM attempt.
 - Existing AGE Campaign Management extensions, earlier production workflows and Chatwoot source remain unchanged. **No live WhatsApp sends authorized.**
 
+## Audit corrections made to the workflow exports
+
+| Area | Previously | Current prepared version |
+|---|---|---|
+| Portfolio table reads | `returnAll=true` could load unlimited records | Hard cap **51**; the 51st row detects too many portfolios |
+| Events table reads | `returnAll=true` with an after-the-fact 3,000-row check | Fetch newest first, maximum **3,001**, explicitly refuse reports that exceed 3,000 |
+| 26-hour gate | Last-completion timestamp could be absent without proving no earlier cycle | New `priorCycleHistoryVerified` boolean; missing/false is a HOLD |
+| Global vs standalone policy | Combined DRY RUN omitted analytics, quality, tier freshness and reservation evidence | Tests enforce parity of **11 named safety gates**, plus template, Sunday/window and per-campaign repeat-gap limitations |
+| Unreachable/failed data sources | Combined report could halt on a read-only API failure | EspoCRM and Chatwoot errors produce a structured DRY_RUN/HOLD response where the nodes return errors |
+| CRM data retrieval | Combined workflow requested all Campaign fields | Now only `id,name,status,ageProvider,ageInboxId` are requested |
+| Existing data tables | Create-if-not-exists could silently reuse an incompatible table | Setup explicitly reports `schemaColumnsNotAutoVerified:true`; manual n8n UI schema verification is mandatory |
+
+**Security:** Only the one-time SETUP creates managed tables. No other exported workflow writes to n8n Data Tables, Meta, EspoCRM or Chatwoot. This is deliberate: safe multi-worker campaign reservation is still unimplemented.
+
 ## Exact files to import, in order
 
 | Step | GitHub workflow | Why | Expected output |
