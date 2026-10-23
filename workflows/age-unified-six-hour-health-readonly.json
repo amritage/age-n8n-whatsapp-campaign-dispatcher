@@ -1,0 +1,274 @@
+{
+  "id": "AGEmergedOpsSixHour26",
+  "name": "AGE - Unified 6h Campaign & Portfolio Health (Read-Only)",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "dc000000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        120,
+        140
+      ]
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000002",
+      "name": "Every 6 Hours (Activate Only After Pilot)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "position": [
+        120,
+        350
+      ]
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000003",
+      "name": "EspoCRM - Read Campaign Metadata",
+      "type": "@traien/n8n-nodes-espocrm.espoCrm",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "customEntity",
+        "operation": "getAll",
+        "entityType": "Campaign",
+        "returnAll": true,
+        "filterOptions": {
+          "select": "id,name,status,masterSendingEnabled,ageProvider,ageTemplateName,ageTemplateLanguage,ageInboxId,ageWindowStart,ageWindowEnd,ageSundayOff"
+        }
+      },
+      "position": [
+        390,
+        280
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "continueOnFail": true
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000004",
+      "name": "Summarize EspoCRM Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Count CRM campaign readiness indicators without asserting recipient eligibility.\nconst rows=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nif(rows.some(x=>x.error))return [{json:{source:'EspoCRM',readable:false,reason:'CRM_API_ERROR',\n campaignCount:0,activeCount:0,providerCount:0,preview:[]}}];\nconst seen=new Set(),preview=[];let activeCount=0,providerCount=0,templateReady=0;\nfor(const c of rows){\n if(typeof c.id!=='string'||!c.id||seen.has(c.id))throw Error('INVALID_DUPLICATE_ESPOCRM_CAMPAIGN');\n seen.add(c.id);\n if(c.status==='Active')activeCount++;\n if(String(c.ageProvider||'').toLowerCase().includes('chatwoot'))providerCount++;\n if(c.ageTemplateName&&c.ageTemplateLanguage)templateReady++;\n if(preview.length<15&&c.status==='Active')preview.push({\n  id:c.id,name:typeof c.name==='string'?c.name.slice(0,75):null,\n  providerConfigured:String(c.ageProvider||'').toLowerCase().includes('chatwoot'),\n  templateConfigured:Boolean(c.ageTemplateName&&c.ageTemplateLanguage)\n });\n}\nreturn [{json:{source:'EspoCRM',readable:true,campaignCount:rows.length,activeCount,providerCount,\n templateConfiguredCount:templateReady,preview,recipientPolicyVerified:false,\n campaignWindowVerified:false,crmRetryPolicyVerified:false}}];"
+      },
+      "position": [
+        670,
+        280
+      ]
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000005",
+      "name": "Chatwoot - Read Native Campaigns",
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll"
+      },
+      "position": [
+        960,
+        280
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "continueOnFail": true
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000006",
+      "name": "Summarize Chatwoot Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const rows=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nif(rows.some(x=>x.error))return [{json:{source:'Chatwoot',readable:false,reason:'CHATWOOT_API_ERROR',\n campaignCount:0,whatsAppOneOffCount:0,processing:0,completed:0}}];\nconst seen=new Set();let whatsAppOneOffCount=0,processing=0,completed=0;\nfor(const c of rows){\n const id=Number(c.id);\n if(!Number.isSafeInteger(id)||id<=0||seen.has(id))throw Error('INVALID_DUPLICATE_CHATWOOT_CAMPAIGN');\n seen.add(id);\n if(c.campaign_type==='one_off'&&c.inbox?.channel_type==='Channel::Whatsapp'){\n  whatsAppOneOffCount++;\n  if(c.campaign_status==='processing')processing++;\n  if(c.campaign_status==='completed')completed++;\n }\n}\nreturn [{json:{source:'Chatwoot',readable:true,campaignCount:rows.length,\n whatsAppOneOffCount,processing,completed,crmBatchMappingVerified:false,providerReceiptsVerified:false}}];"
+      },
+      "position": [
+        1220,
+        280
+      ]
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000007",
+      "name": "Data Table - Read Portfolio (Max 51)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AGE_Portfolio_Control"
+        },
+        "returnAll": false,
+        "limit": 51
+      },
+      "position": [
+        1500,
+        280
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000008",
+      "name": "Data Table - Read Events (Max 3001)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AGE_Dispatcher_Events"
+        },
+        "returnAll": false,
+        "limit": 3001,
+        "orderBy": true,
+        "orderByColumn": "occurredAt",
+        "orderByDirection": "DESC"
+      },
+      "position": [
+        1770,
+        280
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "dc000000-0000-4000-8000-000000000009",
+      "name": "Summarize All Sources - HOLD Only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// One read-only 6-hour report replacing WF-01/02/04/05/06. Never a sending decision.\nconst crm=$('Summarize EspoCRM Campaigns').first().json;\nconst chat=$('Summarize Chatwoot Campaigns').first().json;\nconst portfolioRows=$('Data Table - Read Portfolio (Max 51)').all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nconst events=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nconst blockers=[];\nif(!crm.readable)blockers.push('ESPOCRM_API_UNAVAILABLE');\nif(!chat.readable)blockers.push('CHATWOOT_API_UNAVAILABLE');\nif(portfolioRows.some(x=>x.error))blockers.push('PORTFOLIO_DATA_TABLE_UNAVAILABLE');\nif(events.some(x=>x.error))blockers.push('EVENT_DATA_TABLE_UNAVAILABLE');\nif(portfolioRows.length===0)blockers.push('NO_PORTFOLIO_CONTROL_ROWS');\nif(portfolioRows.length>50)blockers.push('PORTFOLIO_TABLE_SCAN_LIMIT_EXCEEDED');\nif(events.length>3000)blockers.push('EVENT_TABLE_SCAN_LIMIT_EXCEEDED');\nconst now=Date.now(),seen=new Set(),summary=[];\nconst recent=(value,h)=>{const t=Date.parse(value);return Number.isFinite(t)&&t<=now&&now-t<=h*3600000;};\nfor(const x of portfolioRows.filter(x=>!x.error).slice(0,50)){\n const id=String(x.portfolioId||'').trim(),holds=[];\n if(!id||seen.has(id))holds.push('INVALID_OR_DUPLICATE_PORTFOLIO_ID');\n seen.add(id);\n if(x.masterSendingEnabled!==true)holds.push('MASTER_DISABLED');\n if(x.operatorLiveApproved!==true)holds.push('OPERATOR_APPROVAL_NOT_VERIFIED');\n if(x.providerAnalyticsVerified!==true)holds.push('ANALYTICS_NOT_VERIFIED');\n if(x.accountHealthVerified!==true)holds.push('ACCOUNT_HEALTH_NOT_VERIFIED');\n if(!Number.isSafeInteger(x.messagingTier)||x.messagingTier<=0||!recent(x.tierVerifiedAt,24))holds.push('TIER_UNKNOWN_OR_STALE');\n if(!recent(x.qualityVerifiedAt,24))holds.push('QUALITY_UNKNOWN_OR_STALE');\n if(x.externalUsageUnknown!==false||!Number.isSafeInteger(x.externalUnique24h)||x.externalUnique24h<0||\n     !recent(x.externalUsageVerifiedAt,24))holds.push('EXTERNAL_USAGE_UNKNOWN_OR_STALE');\n if(x.unresolvedCycle!==false||String(x.activeCycleId||'').trim())holds.push('UNRESOLVED_CYCLE');\n if(x.priorCycleHistoryVerified!==true)holds.push('PRIOR_CYCLE_HISTORY_NOT_VERIFIED');\n if(x.lastVerifiedBatchCompletedAt){\n  const t=Date.parse(x.lastVerifiedBatchCompletedAt);\n  if(!Number.isFinite(t)||t>now||now-t<26*3600000)holds.push('GLOBAL_26_HOUR_GAP_OR_INVALID_COMPLETION');\n }\n if(!Number.isSafeInteger(x.rollingReserved24h)||x.rollingReserved24h<0)holds.push('RESERVATION_LEDGER_NOT_VERIFIED');\n const capacity=Number.isSafeInteger(x.messagingTier)&&Number.isSafeInteger(x.externalUnique24h)&&Number.isSafeInteger(x.rollingReserved24h)?\n   Math.max(0,x.messagingTier-x.externalUnique24h-x.rollingReserved24h):null;\n if(capacity===0)holds.push('NO_RECORDED_HEADROOM');\n holds.push('DATA_TABLE_NOT_ATOMIC_SEND_AUTHORITY','LIVE_META_CAPACITY_UNVERIFIED');\n summary.push({portfolioId:id||null,recordedTier:x.messagingTier??null,estimatedHeadroom:capacity,holds});\n}\nconst policies={\n '131050':'MARKETING_OPT_OUT_NO_AUTO_RETRY',\n '131049':'RECIPIENT_MARKETING_HOLD_RETAIN_EXISTING_CRM_POLICY',\n '131048':'QUALITY_RESTRICTION_PAUSE_AND_REVIEW',\n '131026':'AMBIGUOUS_UNDELIVERABLE_NOT_UNREGISTERED',\n '130472':'MARKETING_EXPERIMENT_REVIEW',\n '132015':'TEMPLATE_QUALITY_REVIEW'\n};\nconst errorCounts=new Map(),stateCounts=new Map();let recordedRecentErrors=0;\nif(events.length<=3000&&!events.some(x=>x.error)){\n for(const e of events){\n  if(!e||Object.keys(e).length===0)continue;\n  const n=e.count==null?1:Number(e.count);\n  if(!Number.isSafeInteger(n)||n<0)throw Error('INVALID_RECORDED_EVENT_COUNT');\n  const state=String(e.state||'UNKNOWN');\n  stateCounts.set(state,(stateCounts.get(state)||0)+n);\n  const t=Date.parse(e.occurredAt),code=String(e.errorCode||'');\n  if(/^[0-9]{5,6}$/.test(code)&&Number.isFinite(t)&&t<=now&&now-t<=30*86400000){\n   errorCounts.set(code,(errorCounts.get(code)||0)+n);recordedRecentErrors++;\n  }\n }\n}\nconst errorByCode=[...errorCounts].map(([code,count])=>({code,count,policy:policies[code]||'REVIEW'}));\nconst hardOptoutCount=errorCounts.get('131050')||0;\nif(hardOptoutCount>0)blockers.push('RECORDED_MARKETING_OPTOUT_REQUIRES_SOURCE_VERIFICATION');\nblockers.push('RECIPIENT_CONSENT_AND_RETRY_NOT_VERIFIED','TEMPLATE_APPROVAL_NOT_VERIFIED',\n 'SUNDAY_WINDOW_MIN_GAP_NOT_VERIFIED','SEPARATE_DAILY_DELIVERED_AND_ATTEMPT_CAPS_NOT_VERIFIED',\n 'IMMUTABLE_BATCH_MAPPING_NOT_VERIFIED','NO_ATOMIC_SENDING_GATE');\nreturn [{json:{\n checkedAt:new Date().toISOString(),cadence:'EVERY_6_HOURS',mode:'DRY_RUN',decision:'HOLD',\n crm:{readable:crm.readable,campaignCount:crm.campaignCount||0,activeCount:crm.activeCount||0,\n  providerCount:crm.providerCount||0,templateConfiguredCount:crm.templateConfiguredCount||0,preview:crm.preview||[]},\n chatwoot:{readable:chat.readable,campaignCount:chat.campaignCount||0,\n  whatsAppOneOffCount:chat.whatsAppOneOffCount||0,processing:chat.processing||0,completed:chat.completed||0},\n portfolio:{count:summary.length,observations:summary,complete:portfolioRows.length<=50&&!portfolioRows.some(x=>x.error)},\n events:{readable:events.length<=3000&&!events.some(x=>x.error),\n  recordedRows:events.length,recentErrorRecords:recordedRecentErrors,\n  recordedFailureCodes:errorByCode,recordedStates:[...stateCounts].map(([state,count])=>({state,count})),\n  providerEventIngestionEnabled:false},\n blockers:[...new Set(blockers)],sourceOfTruth:'Read-only observations; official provider receipts and portfolio external usage not verified',\n canSend:false,createdCampaigns:0,crmEventsWritten:0,analyticsCapabilityNotCheckedByThisWorkflow:true\n}}];"
+      },
+      "position": [
+        2040,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Read Campaign Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 6 Hours (Activate Only After Pilot)": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Read Campaign Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EspoCRM - Read Campaign Metadata": {
+      "main": [
+        [
+          {
+            "node": "Summarize EspoCRM Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize EspoCRM Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Read Native Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Read Native Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Summarize Chatwoot Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Chatwoot Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Portfolio (Max 51)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Read Portfolio (Max 51)": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Events (Max 3001)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Read Events (Max 3001)": {
+      "main": [
+        [
+          {
+            "node": "Summarize All Sources - HOLD Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
