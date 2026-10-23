@@ -52,6 +52,8 @@ jobs:
         run: node tests/chatwoot-compatibility.test.js
       - name: Test 2026 platform research workflow pack without provider writes
         run: node tests/new-platform-workflows.test.js
+      - name: Test SQL-free n8n Data Tables pack and double-send prevention boundary
+        run: node tests/native-datatable-architecture.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
