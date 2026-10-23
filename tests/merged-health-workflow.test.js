@@ -96,7 +96,7 @@ assert.equal(list.continueOnFail,true);
 assert.equal(list.alwaysOutputData,true);
 const pickSource=daily.nodes.find(n=>n.name==='Choose Existing Native WhatsApp Campaign').parameters.jsCode;
 const noSampleSource=daily.nodes.find(n=>n.name==='Report No Sample Campaign').parameters.jsCode;
-const vmCode=(src,items)=>vm.runInNewContext('(function(){'+src+'\\n})()',{
+const vmCode=(src,items)=>vm.runInNewContext('(function(){'+src+String.fromCharCode(10)+'})()',{
  Date, $input:{all:()=>items.map(item),first:()=>item(items[0]||{})}
 },{timeout:1000});
 const denied=vmCode(pickSource,[{error:'403'}]);
