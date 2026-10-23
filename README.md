@@ -1,4 +1,18 @@
 
+## NEW: Research-based seven-workflow pack — 23 October 2026
+
+**Start here:** [Import and architecture guide for all seven NEW workflows](docs/WORKFLOW_PACK_2026-10-23.md). All workflow JSONs are in [`workflows/`](workflows/). No manual EspoCRM/Chatwoot campaign IDs, API tokens or instance URLs are baked into the workflow code. The installed community EspoCRM and Chatwoot nodes plus the built-in Postgres node are used; bind existing credentials **once** in n8n.
+
+- **WF-00:** native Chatwoot campaign analytics access probe, returns BLOCKED/UNVERIFIED when feature-gated or no sample
+- **WF-01:** native EspoCRM Campaign metadata and conservative readiness preview; no recipients read in bulk
+- **WF-02:** **private** PostgreSQL portfolio gate and global 26h/rolling-capacity HOLD reasons
+- **WF-03:** optional Chatwoot PostgreSQL **SELECT-only** candidate provider-message evidence, independent of paid analytics
+- **WF-04:** Meta failure-code monitor including 131050 opt-out; only reports, never auto-resends
+- **WF-05:** private operational ledger dashboard
+- **WF-06:** one-click hourly **global dry-run** combining all three systems; emits `decision:HOLD` and `canSend:false`
+
+Supporting [private DB control-plane schema](sql/dispatcher-control-plane.sql) defaults to *all sends disabled and external usage unknown*. It must be reviewed and explicitly applied before DB-dependent workflows run; GitHub commits do not migrate it. The two existing full sender/reconciliation architecture shells remain **intentionally non-sending**. **No actual Meta or Chatwoot campaign send, contact/label mutation, or EspoCRM event write is in this pack.**
+
 ## Verified platform research — 23 October 2026
 
 The [official Meta, Chatwoot, n8n and EspoCRM documentation review](docs/PLATFORM_RESEARCH_2026-10-23.md) identifies important design gates before the new dispatcher can send: self-hosted Chatwoot **campaign sending is not equivalent to paid campaign analytics access**, v4.19's 100-contact background worker **requeries mutable labels**, WhatsApp can use **BSUID-only identities** without phone numbers, Meta's portfolio-wide **rolling 24h unique-user limit** is distinct from AGE's delivered target and **per-delivered-message cost**, and n8n **queue-mode concurrency requires transactional PostgreSQL reservation/idempotency**. Do not change old extensions/workflows. Research was saved for implementation; no new LIVE permissions were granted.
