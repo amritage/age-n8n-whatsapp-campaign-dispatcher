@@ -46,6 +46,8 @@ This file tracks historical **observed** results and blockers. GitHub Actions al
 
 | 2026-10-22 | Chatwoot installed version clarification | USER-CONFIRMED / API NOT PROBED | Operator explicitly confirmed **Chatwoot v4.19.0** is installed; prior v4.17.1 version-drift concern is closed for design. Official v4.19.0 source contains the native batch job. | Verify analytics feature entitlement and live APIs before release; no upgrade needed |
 
+| 2026-10-23 | Current Meta/Chatwoot/n8n/EspoCRM documentation research | SOURCE REVIEW / NOT LIVE-TESTED | [Research memo](../docs/PLATFORM_RESEARCH_2026-10-23.md): Chatwoot v4.19 batching mutable-label risk, 2026-10-22 BSUID, feature-gated paid self-hosted analytics, Meta separate capacity/cost/attempt budgets, n8n PG atomic reservations, Espo minimal ACL/filtering | Convert to implementation backlog; test Chatwoot analytics entitlement and Account Health read-only before sending |
+
 ### Recording convention
 - PASS = successfully exercised with stated evidence and scope; FAIL = tested and produced incorrect behavior; BLOCKED = cannot safely proceed; SKIP/NOT RUN = not attempted, **never count as PASS**.
 - Always record date/time, system version, commit, scenario, observed/expected behavior, failure reason/error code, remediation and retest status.
