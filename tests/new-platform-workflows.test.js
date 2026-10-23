@@ -7,7 +7,8 @@ const names=[
  'age-02-postgres-portfolio-preflight.json',
  'age-03-chatwoot-evidence-readonly.json',
  'age-04-meta-error-watch.json',
- 'age-05-operations-dashboard.json'
+ 'age-05-operations-dashboard.json',
+ 'age-06-global-cycle-dry-run.json'
 ];
 const files=names.map(f=>JSON.parse(fs.readFileSync(path.join(dir,f),'utf8')));
 for(const w of files){
@@ -64,4 +65,15 @@ assert.equal(err[0].json.marketingOptouts,2);
 assert(err[0].json.errors.some(x=>x.classification==='UNDELIVERABLE_UNKNOWN_DO_NOT_MARK_UNREGISTERED'));
 let dash=run(5,'Summarize Ledger Counters',[{portfolios:0,cycles:[],batches:[],recipients:[],ready_for_other_checks:0}]);
 assert.equal(dash[0].json.canSend,false);
-console.log('PASS: six new read-only importable workflow contracts; Meta opt-out, no-campaign, analytics 403, unknown capacity and zero-live gates');
+let cycle=run(6,'Explain Cycle Decision - Never Dispatch',[
+ {portfolio_id:'portfolio-one',reason:'TIER_UNKNOWN_OR_STALE',conservative_headroom:0}
+],{
+ 'Count Espo Campaigns Without Eligibility Claims':{first:()=>({json:{crmReadable:true,campaignCount:3,activeCount:2,chatwootConfiguredCount:2}})},
+ 'Count Provider Batches Without Joining Names':{first:()=>({json:{chatwootReadable:true,counts:{total:1,oneOffWhatsApp:1,processing:1,completed:0}})}
+});
+assert.equal(cycle[0].json.canSend,false);
+assert.equal(cycle[0].json.decision,'HOLD');
+assert(cycle[0].json.reasons.includes('portfolio-one:TIER_UNKNOWN_OR_STALE'));
+assert.equal(cycle[0].json.createdCampaigns,0);
+
+console.log('PASS: seven new read-only workflow contracts; safe global cycle DRY_RUN, Meta opt-out, unavailable analytics, capacity and no-live gates');
