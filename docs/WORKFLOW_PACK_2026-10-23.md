@@ -2,7 +2,7 @@
 
 ## What is delivered
 
-**Six NEW importable, fail-closed n8n workflows** (plus previously delivered native Chatwoot diagnostic reporting and two pre-existing, non-sending future architecture shells). Created for **n8n 2.37.9 queue mode, EspoCRM, Chatwoot 4.19.0 and PostgreSQL 16**. All six use installed native EspoCRM/Chatwoot community nodes or n8n's built-in Postgres node, with no generic HTTP Request node and **no manually entered campaign ID**.
+**Seven NEW importable, fail-closed n8n workflows** (plus previously delivered native Chatwoot diagnostic reporting and two pre-existing, non-sending future architecture shells). Created for **n8n 2.37.9 queue mode, EspoCRM, Chatwoot 4.19.0 and PostgreSQL 16**. All seven use installed native EspoCRM/Chatwoot community nodes or n8n's built-in Postgres node, with no generic HTTP Request node and **no manually entered campaign ID**.
 
 | Workflow file | Frequency if operator later activates | Access and job | Read/write status |
 |---|---|---|---|
@@ -12,6 +12,7 @@
 | **`age-03-chatwoot-evidence-readonly.json`** | 6h | Optional built-in Postgres SELECT on Chatwoot's **enterprise** `campaign_recipients` and `campaigns` tables, **aggregates only**, counts possible `wamid.` source IDs and terminal statuses. | Read-only; requires dedicated Chatwoot DB **SELECT-only** role; blocked if enterprise table unavailable |
 | **`age-04-meta-error-watch.json`** | 6h | Built-in Postgres SELECT from the private ledger; classifies codes including 131050 permanent marketing opt-out, 131049 per-user marketing hold, 131026 ambiguous and 131048 quality restriction. | Read-only; **does not yet apply CRM suppression writes** |
 | **`age-05-operations-dashboard.json`** | 6h | Built-in Postgres SELECT aggregated state across portfolios/cycles/batches/recipients. | Read-only; not a provider-verified Meta billing/delivery report |
+| **`age-06-global-cycle-dry-run.json`** | 1h | Consolidated native EspoCRM Campaign Get All → Chatwoot Campaign Get All → private Postgres global portfolio holds → **HOLD decision**. A convenient single-workflow entry point. | **DRY RUN only**, explicitly emits `canSend:false`, creates zero campaigns |
 
 The previously provided `age-chatwoot-recipient-report-native.json` uses five rotating recent Chatwoot campaigns, native metrics and failed-only recipient retrieval, and may be useful **only if** the analytics entitlement check passes. It is a diagnostic, **not** exhaustive recipient history or CRM event synchronization.
 
@@ -31,8 +32,9 @@ The previously provided `age-chatwoot-recipient-report-native.json` uses five ro
 1. Import **WF-00** and **WF-01** as new inactive workflows and bind your already installed Chatwoot and EspoCRM credentials. Neither asks for a campaign ID. Manually execute them first. The first workflow may return UNVERIFIED if there is no native Chatwoot WhatsApp one-off campaign; do not create a live campaign merely for diagnostics.
 2. For WF-02, WF-04 and WF-05, first review and deliberately apply `sql/dispatcher-control-plane.sql` to a **separately designated private PostgreSQL database/schema** (existing n8n Postgres database or a dedicated DB with separate role); apply backup/privilege review. Use a SELECT-only n8n database credential on the built-in Postgres nodes. An empty ledger intentionally returns no portfolio rows; it does **not** mean available capacity.
 3. For WF-03, use a distinct **Chatwoot production DB role with SELECT access only to specific evidence tables**; never connect to Chatwoot as database superuser or attempt migrations. Requires confirmation that `campaign_recipients` exists in deployed edition. Do not configure this workflow if database access is undesirable.
-4. Do **not activate schedules until each workflow's manual run has been verified**. Six-hour schedules are optional; no automatic sends, labels, new contacts, template launches or EspoCRM writes occur.
-5. An n8n CLI JSON import test tests shape only; the installed community node execution, permissions, provider API responses and database access still require your **real n8n run**. Do not paste credentials/phone numbers into GitHub or ChatGPT logs.
+4. After the private schema and its PostgreSQL read credential are available, import **WF-06** to inspect all three systems with one manual execution. It always returns `mode:DRY_RUN`, `decision:HOLD`, and `canSend:false`. This is the practical replacement for editing IDs or running separate scans to infer readiness.
+5. Do **not activate schedules until each workflow's manual run has been verified**. Six-hour schedules are optional; no automatic sends, labels, new contacts, template launches or EspoCRM writes occur.
+6. An n8n CLI JSON import test tests shape only; the installed community node execution, permissions, provider API responses and database access still require your **real n8n run**. Do not paste credentials/phone numbers into GitHub or ChatGPT logs.
 
 ## Critical business policies embedded or held safely
 
