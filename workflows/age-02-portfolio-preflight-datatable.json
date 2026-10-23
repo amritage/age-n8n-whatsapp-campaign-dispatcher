@@ -1,0 +1,121 @@
+{
+  "id": "AGEdtPortfolio26v1",
+  "name": "AGE DT-02 - Portfolio Preflight Using n8n Data Tables (Read Only)",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "bc000000-0000-4000-8000-200000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-200000000002",
+      "name": "Schedule Every 1 Hours - Activate After Testing",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        390
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-200000000003",
+      "name": "Data Table - Read Portfolio Control",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AGE_Portfolio_Control"
+        },
+        "returnAll": true
+      },
+      "position": [
+        480,
+        280
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "bc000000-0000-4000-8000-200000000004",
+      "name": "Evaluate Portfolio Control - Always Hold",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Read the officially managed n8n Data Table. NEVER infer safe sending from a user-editable row.\n// Missing, duplicate, stale, or conflicting portfolio evidence remains blocked.\nconst raw=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(raw.some(x=>x.error))return [{json:{mode:'READ_ONLY',reason:'N8N_DATA_TABLE_NOT_AVAILABLE',status:'BLOCKED',portfolios:[],canSend:false}}];\nif(!raw.length)return [{json:{mode:'READ_ONLY',reason:'NO_PORTFOLIO_CONTROL_ROWS',status:'BLOCKED',portfolios:[],canSend:false}}];\nif(raw.length>50)throw new Error('PORTFOLIO_CONTROL_TOO_MANY_ROWS');\nconst seen=new Set(),now=Date.now();\nfunction recent(t,h){const ms=Date.parse(t);return Number.isFinite(ms)&&ms<=now&&now-ms<=h*3600000;}\nconst p=raw.map(x=>{\n  const id=String(x.portfolioId||'').trim();\n  const holds=[];\n  if(!id||seen.has(id))holds.push('MISSING_OR_DUPLICATE_PORTFOLIO_ID');\n  seen.add(id);\n  if(x.masterSendingEnabled!==true)holds.push('MASTER_DISABLED');\n  if(x.operatorLiveApproved!==true)holds.push('OPERATOR_APPROVAL_NOT_VERIFIED');\n  if(x.providerAnalyticsVerified!==true)holds.push('ANALYTICS_NOT_VERIFIED');\n  if(x.accountHealthVerified!==true)holds.push('ACCOUNT_HEALTH_NOT_VERIFIED');\n  if(!Number.isSafeInteger(x.messagingTier)||x.messagingTier<=0||!recent(x.tierVerifiedAt,24))holds.push('TIER_UNKNOWN_OR_STALE');\n  if(!recent(x.qualityVerifiedAt,24))holds.push('QUALITY_UNKNOWN_OR_STALE');\n  if(x.externalUsageUnknown!==false||!Number.isSafeInteger(x.externalUnique24h)||x.externalUnique24h<0||\n     !recent(x.externalUsageVerifiedAt,24))holds.push('EXTERNAL_USAGE_UNKNOWN_OR_STALE');\n  if(x.unresolvedCycle!==false||String(x.activeCycleId||'').trim())holds.push('UNRESOLVED_CYCLE');\n  const completion=x.lastVerifiedBatchCompletedAt;\n  if(completion && (isNaN(Date.parse(completion))||now-Date.parse(completion)<26*3600000))holds.push('GLOBAL_26_HOUR_GAP_OR_INVALID_COMPLETION');\n  if(!Number.isSafeInteger(x.rollingReserved24h)||x.rollingReserved24h<0)holds.push('RESERVATION_LEDGER_NOT_VERIFIED');\n  const capacity=Number.isSafeInteger(x.messagingTier)&&Number.isSafeInteger(x.externalUnique24h)&&Number.isSafeInteger(x.rollingReserved24h)?\n    Math.max(0,x.messagingTier-x.externalUnique24h-x.rollingReserved24h):null;\n  if(capacity===0)holds.push('NO_RECORDED_HEADROOM');\n  holds.push('DATA_TABLE_IS_NOT_ATOMIC_SEND_AUTHORITY','META_LIVE_CAPACITY_NOT_INDEPENDENTLY_PROVEN');\n  return {portfolioId:id||null,recordedTier:x.messagingTier??null,estimatedHeadroom:capacity,\n   holds,canSend:false};\n});\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',status:'BLOCKED',portfolioCount:p.length,\n portfolios:p,canSend:false,crmEventWriteAuthorized:false,diagnosticOnly:true}}];"
+      },
+      "position": [
+        790,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Portfolio Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Every 1 Hours - Activate After Testing": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Portfolio Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Read Portfolio Control": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Portfolio Control - Always Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
