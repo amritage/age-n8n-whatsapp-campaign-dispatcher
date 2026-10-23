@@ -1,0 +1,119 @@
+{
+  "id": "AGEwf02Portfolio26",
+  "name": "AGE 02 - PostgreSQL Portfolio Gate - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "af020000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "af020000-0000-4000-8000-000000000002",
+      "name": "Schedule - Every 1 Hours (Inactive Until Enabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        410
+      ]
+    },
+    {
+      "id": "af020000-0000-4000-8000-000000000003",
+      "name": "Postgres - Read Portfolio Preflight",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT portfolio_id,messaging_tier,external_unique_24h,reserved_unique_24h,\n outstanding_attempts,conservative_headroom,reason,can_send,active_cycle_id,\n last_verified_cycle_completed_at FROM age_dispatcher.preflight_view ORDER BY portfolio_id LIMIT 200;",
+        "options": {
+          "queryBatching": "single",
+          "largeNumbersOutput": "text"
+        }
+      },
+      "position": [
+        460,
+        300
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "af020000-0000-4000-8000-000000000004",
+      "name": "Explain Global Capacity Holds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const r=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(r.length===0)return [{json:{mode:'READ_ONLY',result:'BLOCKED',reason:'NO_PORTFOLIO_ROWS_OR_SCHEMA_NOT_SEEDED',canSend:false}}];\nif(r.some(x=>x.error))return [{json:{mode:'READ_ONLY',result:'BLOCKED',reason:'POSTGRES_SCHEMA_OR_ACCESS_ERROR',canSend:false}}];\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:'INVENTORY_ONLY',\n portfolios:r.map(x=>({portfolioId:x.portfolio_id,reason:x.reason,conservativeHeadroom:Number(x.conservative_headroom)||0,\n  tier:x.messaging_tier,reservedUnique24h:Number(x.reserved_unique_24h)||0,outstandingAttempts:Number(x.outstanding_attempts)||0,\n  activeCycleId:x.active_cycle_id,priorCompletion:x.last_verified_cycle_completed_at})),\n canSend:false,crmEventWriteAuthorized:false,note:'Database headroom alone is NOT a Meta real-time remaining limit and cannot authorize sends.'}}];"
+      },
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Read Portfolio Preflight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 1 Hours (Inactive Until Enabled)": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Read Portfolio Preflight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Read Portfolio Preflight": {
+      "main": [
+        [
+          {
+            "node": "Explain Global Capacity Holds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
