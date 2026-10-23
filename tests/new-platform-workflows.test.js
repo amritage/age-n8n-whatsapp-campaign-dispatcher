@@ -68,8 +68,12 @@ assert.equal(dash[0].json.canSend,false);
 let cycle=run(6,'Explain Cycle Decision - Never Dispatch',[
  {portfolio_id:'portfolio-one',reason:'TIER_UNKNOWN_OR_STALE',conservative_headroom:0}
 ],{
- 'Count Espo Campaigns Without Eligibility Claims':{first:()=>({json:{crmReadable:true,campaignCount:3,activeCount:2,chatwootConfiguredCount:2}})},
- 'Count Provider Batches Without Joining Names':{first:()=>({json:{chatwootReadable:true,counts:{total:1,oneOffWhatsApp:1,processing:1,completed:0}})}
+ 'Count Espo Campaigns Without Eligibility Claims':{
+   first(){return {json:{crmReadable:true,campaignCount:3,activeCount:2,chatwootConfiguredCount:2}};}
+ },
+ 'Count Provider Batches Without Joining Names':{
+   first(){return {json:{chatwootReadable:true,counts:{total:1,oneOffWhatsApp:1,processing:1,completed:0}}};}
+ }
 });
 assert.equal(cycle[0].json.canSend,false);
 assert.equal(cycle[0].json.decision,'HOLD');
