@@ -1,0 +1,219 @@
+{
+  "id": "AGEdtSetup1026v1",
+  "name": "AGE DT-SETUP - Create Managed n8n Data Tables (Manual Only)",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "bc000000-0000-4000-8000-100000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-100000000002",
+      "name": "Data Table - Create or Reuse AGE_Portfolio_Control",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "AGE_Portfolio_Control",
+        "columns": {
+          "column": [
+            {
+              "name": "portfolioId",
+              "type": "string"
+            },
+            {
+              "name": "messagingTier",
+              "type": "number"
+            },
+            {
+              "name": "tierVerifiedAt",
+              "type": "date"
+            },
+            {
+              "name": "qualityVerifiedAt",
+              "type": "date"
+            },
+            {
+              "name": "externalUsageVerifiedAt",
+              "type": "date"
+            },
+            {
+              "name": "externalUnique24h",
+              "type": "number"
+            },
+            {
+              "name": "rollingReserved24h",
+              "type": "number"
+            },
+            {
+              "name": "masterSendingEnabled",
+              "type": "boolean"
+            },
+            {
+              "name": "operatorLiveApproved",
+              "type": "boolean"
+            },
+            {
+              "name": "providerAnalyticsVerified",
+              "type": "boolean"
+            },
+            {
+              "name": "accountHealthVerified",
+              "type": "boolean"
+            },
+            {
+              "name": "externalUsageUnknown",
+              "type": "boolean"
+            },
+            {
+              "name": "unresolvedCycle",
+              "type": "boolean"
+            },
+            {
+              "name": "activeCycleId",
+              "type": "string"
+            },
+            {
+              "name": "lastVerifiedBatchCompletedAt",
+              "type": "date"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "position": [
+        430,
+        280
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-100000000003",
+      "name": "Data Table - Create or Reuse AGE_Dispatcher_Events",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "AGE_Dispatcher_Events",
+        "columns": {
+          "column": [
+            {
+              "name": "portfolioId",
+              "type": "string"
+            },
+            {
+              "name": "occurredAt",
+              "type": "date"
+            },
+            {
+              "name": "errorCode",
+              "type": "string"
+            },
+            {
+              "name": "eventType",
+              "type": "string"
+            },
+            {
+              "name": "campaignId",
+              "type": "string"
+            },
+            {
+              "name": "batchId",
+              "type": "string"
+            },
+            {
+              "name": "state",
+              "type": "string"
+            },
+            {
+              "name": "count",
+              "type": "number"
+            },
+            {
+              "name": "note",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "position": [
+        690,
+        280
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-100000000004",
+      "name": "Confirm Tables Exist - No Messaging",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const t=$input.first().json;\nif(!t||!t.id||t.name!=='AGE_Dispatcher_Events')throw new Error('DATA_TABLE_SETUP_FAILED');\nreturn [{json:{mode:'SETUP_ONLY',createdOrReused:['AGE_Portfolio_Control','AGE_Dispatcher_Events'],\n notes:'Create or verify column schemas in the n8n Data Tables UI. This workflow does not seed a Meta portfolio or enable sending.',\n canSend:false}}];"
+      },
+      "position": [
+        940,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Create or Reuse AGE_Portfolio_Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Create or Reuse AGE_Portfolio_Control": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Create or Reuse AGE_Dispatcher_Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Create or Reuse AGE_Dispatcher_Events": {
+      "main": [
+        [
+          {
+            "node": "Confirm Tables Exist - No Messaging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
