@@ -88,4 +88,21 @@ x=final(allSources([],
  Array.from({length:3001},()=>({occurredAt:beforeHours(1),errorCode:'131049',count:1,state:'FAILED'}))));
 assert(x.blockers.includes('EVENT_TABLE_SCAN_LIMIT_EXCEEDED'));
 assert.equal(x.events.readable,false);
+
+// Independent daily capability probe: a denied Campaign/Get All must be BLOCKED, not confused with an empty inventory.
+const daily=JSON.parse(fs.readFileSync(path.join(__dirname,'../workflows/age-00-chatwoot-analytics-capability.json'),'utf8'));
+const list=daily.nodes.find(n=>n.name==='Chatwoot - List Campaigns');
+assert.equal(list.continueOnFail,true);
+assert.equal(list.alwaysOutputData,true);
+const pickSource=daily.nodes.find(n=>n.name==='Choose Existing Native WhatsApp Campaign').parameters.jsCode;
+const noSampleSource=daily.nodes.find(n=>n.name==='Report No Sample Campaign').parameters.jsCode;
+const vmCode=(src,items)=>vm.runInNewContext('(function(){'+src+'\\n})()',{
+ Date, $input:{all:()=>items.map(item),first:()=>item(items[0]||{})}
+},{timeout:1000});
+const denied=vmCode(pickSource,[{error:'403'}]);
+assert.equal(denied[0].json.reason,'CHATWOOT_CAMPAIGN_LIST_UNAVAILABLE');
+const blocked=vmCode(noSampleSource,[denied[0].json]);
+assert.equal(blocked[0].json.result,'BLOCKED');
+const none=vmCode(pickSource,[]);
+assert.equal(vmCode(noSampleSource,[none[0].json])[0].json.result,'UNVERIFIED');
 console.log('PASS: merged single 6-hour read-only monitor, graph, zero rows, errors, 26h, PII-safe summary, 131050, scan limits');
