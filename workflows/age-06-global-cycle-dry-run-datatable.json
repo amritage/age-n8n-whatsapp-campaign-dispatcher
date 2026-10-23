@@ -1,0 +1,232 @@
+{
+  "id": "AGEdtCycle26v1",
+  "name": "AGE DT-06 - Zero SQL Global Multi-Campaign DRY RUN",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "bc000000-0000-4000-8000-600000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000002",
+      "name": "Schedule Every 1 Hours - Activate After Testing",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        390
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000003",
+      "name": "EspoCRM - Discover All Campaigns",
+      "type": "@traien/n8n-nodes-espocrm.espoCrm",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "customEntity",
+        "operation": "getAll",
+        "entityType": "Campaign",
+        "returnAll": true,
+        "filterOptions": {}
+      },
+      "position": [
+        420,
+        280
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000004",
+      "name": "Count Espo Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const a=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(a.some(x=>x.error))return [{json:{readable:false,activeCount:0,reason:'ESPOCRM_UNAVAILABLE'}}];\nconst keys=new Set();\nfor(const c of a){if(!c.id||keys.has(c.id))throw new Error('DUPLICATE_ESPO_CAMPAIGN_ID');keys.add(c.id);}\nreturn [{json:{readable:true,count:a.length,activeCount:a.filter(x=>x.status==='Active').length,\n chatwootConfigured:a.filter(x=>String(x.ageProvider||'').includes('Chatwoot')).length}}];"
+      },
+      "position": [
+        680,
+        280
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000005",
+      "name": "Chatwoot - Discover Native Campaigns",
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll"
+      },
+      "position": [
+        930,
+        280
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000006",
+      "name": "Count Native Chatwoot Campaigns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const a=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(a.some(x=>x.error))return [{json:{readable:false,reason:'CHATWOOT_UNAVAILABLE'}}];\nconst keys=new Set();\nfor(const c of a){const id=Number(c.id);if(!Number.isSafeInteger(id)||keys.has(id))throw new Error('INVALID_OR_DUPLICATE_CHATWOOT_ID');keys.add(id);}\nreturn [{json:{readable:true,count:a.length,nativeWhatsApp:a.filter(c=>c.campaign_type==='one_off'&&c.inbox?.channel_type==='Channel::Whatsapp').length}}];"
+      },
+      "position": [
+        1200,
+        280
+      ]
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000007",
+      "name": "Data Table - Read Portfolio Control",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AGE_Portfolio_Control"
+        },
+        "returnAll": true
+      },
+      "position": [
+        1430,
+        280
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "bc000000-0000-4000-8000-600000000008",
+      "name": "Report Global DRY RUN Holds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const crm=$('Count Espo Campaigns').first().json;\nconst provider=$('Count Native Chatwoot Campaigns').first().json;\nconst control=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nconst reasons=[];\nif(!crm.readable)reasons.push('ESPOCRM_NOT_READABLE');\nif(!provider.readable)reasons.push('CHATWOOT_NOT_READABLE');\nif(control.some(x=>x.error))reasons.push('N8N_DATA_TABLE_UNAVAILABLE');\nif(!control.length)reasons.push('NO_PORTFOLIO_RECORDS');\nif(control.length>50)reasons.push('TOO_MANY_PORTFOLIOS');\nconst seen=new Set(),now=Date.now(),p=[];\nfor(const row of control.filter(x=>x.portfolioId)){\n const id=String(row.portfolioId);\n if(seen.has(id))reasons.push('DUPLICATE_PORTFOLIO_ID');seen.add(id);\n const holds=[];\n if(row.masterSendingEnabled!==true)holds.push('MASTER_DISABLED');\n if(row.operatorLiveApproved!==true)holds.push('OPERATOR_NOT_APPROVED');\n if(row.unresolvedCycle!==false||row.activeCycleId)holds.push('UNRESOLVED_CYCLE');\n if(row.externalUsageUnknown!==false)holds.push('EXTERNAL_USAGE_UNKNOWN');\n const t=Date.parse(row.lastVerifiedBatchCompletedAt);\n if(row.lastVerifiedBatchCompletedAt&&(!Number.isFinite(t)||now-t<26*3600000))holds.push('GLOBAL_26_HOUR_GAP');\n holds.push('NO_ATOMIC_RESERVATION_GATE','RECIPIENT_CONSENT_NOT_VERIFIED');\n p.push({portfolioId:id,holds});\n}\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'DRY_RUN',decision:'HOLD',\n espoCampaignCount:crm.count??0,activeEspoCampaigns:crm.activeCount??0,\n chatwootCampaignCount:provider.count??0,portfolio:p,\n reasons:[...new Set([...reasons,'META_PORTFOLIO_CAPACITY_NOT_VERIFIED','NO_PRODUCTION_SENDING_GATE'])],\n canSend:false,createdCampaigns:0,crmEventsWritten:0}}];"
+      },
+      "position": [
+        1690,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Discover All Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Every 1 Hours - Activate After Testing": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Discover All Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EspoCRM - Discover All Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Count Espo Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Espo Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Discover Native Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Discover Native Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Count Native Chatwoot Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Native Chatwoot Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Portfolio Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Read Portfolio Control": {
+      "main": [
+        [
+          {
+            "node": "Report Global DRY RUN Holds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
