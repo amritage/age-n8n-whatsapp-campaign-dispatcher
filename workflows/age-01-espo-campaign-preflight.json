@@ -1,0 +1,122 @@
+{
+  "id": "AGEwf01Preflight26",
+  "name": "AGE 01 - EspoCRM All Campaigns Preflight - Non Sending",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "af010000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "af010000-0000-4000-8000-000000000002",
+      "name": "Schedule - Every 1 Hours (Inactive Until Enabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        410
+      ]
+    },
+    {
+      "id": "af010000-0000-4000-8000-000000000003",
+      "name": "EspoCRM - Get Campaign Metadata",
+      "type": "@traien/n8n-nodes-espocrm.espoCrm",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "customEntity",
+        "operation": "getAll",
+        "entityType": "Campaign",
+        "returnAll": true,
+        "filterOptions": {
+          "select": "id,name,status,masterSendingEnabled,ageProvider,ageTemplateName,ageTemplateLanguage,ageTimeZone,ageWindowStart,ageWindowEnd,ageSundayOff,ageInboxId"
+        }
+      },
+      "position": [
+        440,
+        300
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "af010000-0000-4000-8000-000000000004",
+      "name": "Inspect Campaign Gates Without Sending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const recs=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(recs.some(x=>x.error))return [{json:{mode:'READ_ONLY',result:'BLOCKED',reason:'ESPOCRM_CAMPAIGN_LIST_FAILED',canSend:false}}];\nconst result=[],seen=new Set();\nfor(const c of recs){\n if(typeof c.id!=='string'||!c.id||seen.has(c.id))throw Error('INVALID_OR_DUPLICATE_CAMPAIGN');\n seen.add(c.id);\n const active=c.status==='Active',enabled=c.masterSendingEnabled===true,\n   chatwootProvider=String(c.ageProvider||'').toLowerCase().includes('chatwoot');\n const reasons=[];\n if(!active)reasons.push('CAMPAIGN_INACTIVE');\n if(!enabled)reasons.push('MASTER_SENDING_NOT_VERIFIED_FOR_CAMPAIGN');\n if(!chatwootProvider)reasons.push('CHATWOOT_PROVIDER_NOT_CONFIRMED');\n if(typeof c.ageTemplateName!=='string'||!c.ageTemplateName)reasons.push('TEMPLATE_NOT_CONFIRMED');\n if(typeof c.ageTemplateLanguage!=='string'||!c.ageTemplateLanguage)reasons.push('LANGUAGE_NOT_CONFIRMED');\n // Cannot attest audience/current consent without authoritative CRM policy API.\n reasons.push('RECIPIENT_POLICY_NOT_EVALUATED','PORTFOLIO_LEDGER_NOT_EVALUATED');\n result.push({id:c.id,name:String(c.name||'').slice(0,90),status:c.status||null,\n   previewDecision:reasons.length?'BLOCKED':'CHECK_FURTHER',reasons});\n}\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',campaignCount:recs.length,\n activeCount:recs.filter(x=>x.status==='Active').length,\n preview:result.slice(0,50),previewTruncated:result.length>50,recipientEligibilityVerified:false,\n canSend:false,crmEventWriteAuthorized:false}}];"
+      },
+      "position": [
+        720,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Get Campaign Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 1 Hours (Inactive Until Enabled)": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Get Campaign Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EspoCRM - Get Campaign Metadata": {
+      "main": [
+        [
+          {
+            "node": "Inspect Campaign Gates Without Sending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
