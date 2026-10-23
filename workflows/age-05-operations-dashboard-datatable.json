@@ -55,7 +55,8 @@
           "mode": "name",
           "value": "AGE_Portfolio_Control"
         },
-        "returnAll": true
+        "returnAll": false,
+        "limit": 51
       },
       "position": [
         480,
@@ -77,7 +78,11 @@
           "mode": "name",
           "value": "AGE_Dispatcher_Events"
         },
-        "returnAll": true
+        "returnAll": false,
+        "limit": 3001,
+        "orderBy": true,
+        "orderByColumn": "occurredAt",
+        "orderByDirection": "DESC"
       },
       "position": [
         770,
