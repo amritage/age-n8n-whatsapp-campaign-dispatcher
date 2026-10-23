@@ -22,7 +22,8 @@ for(const [filename,workflow] of Object.entries(w)){
  assert.equal(names.size,workflow.nodes.length,filename+' duplicates node names');
  const start=workflow.nodes.find(n=>n.type==='n8n-nodes-base.manualTrigger');
  assert(start,filename+' requires manual execution');
- const reachable=new Set([start.name]),stack=[start.name];
+ const triggerRoots=workflow.nodes.filter(n=>n.type==='n8n-nodes-base.manualTrigger'||n.type==='n8n-nodes-base.scheduleTrigger').map(n=>n.name);
+ const reachable=new Set(triggerRoots),stack=[...triggerRoots];
  while(stack.length){
   const name=stack.pop(),edges=workflow.connections[name]?.main||[];
   for(const line of edges)for(const edge of line){
