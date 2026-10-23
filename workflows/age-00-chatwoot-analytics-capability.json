@@ -1,0 +1,238 @@
+{
+  "id": "AGEwf00Cap26V001",
+  "name": "AGE 00 - Chatwoot v4.19 Analytics Capability Check - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "af000000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000002",
+      "name": "Schedule - Every 24 Hours (Inactive Until Enabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        410
+      ]
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000003",
+      "name": "Chatwoot - List Campaigns",
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll"
+      },
+      "position": [
+        440,
+        300
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000004",
+      "name": "Choose Existing Native WhatsApp Campaign",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const rows=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nconst all=rows.filter(c=>c.campaign_type==='one_off'&&c.inbox?.channel_type==='Channel::Whatsapp');\nconst completed=all.filter(c=>c.campaign_status==='completed');\ncompleted.sort((a,b)=>(Number(b.completed_at)||0)-(Number(a.completed_at)||0)||Number(b.id)-Number(a.id));\nconst pick=completed[0]||all[0];\nif(!pick)return [{json:{found:false,reason:'NO_NATIVE_WHATSAPP_CAMPAIGN_TO_TEST',tested:false}}];\nconst id=Number(pick.id);\nif(!Number.isSafeInteger(id)||id<1)throw Error('INVALID_CHATWOOT_CAMPAIGN_ID');\nreturn [{json:{found:true,campaignId:id,campaignStatus:pick.campaign_status,kind:pick.campaign_type,readOnly:true}}];"
+      },
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000005",
+      "name": "Any Sample Campaign?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "check-000005",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      },
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000006",
+      "name": "Chatwoot - GET Metrics for Capability",
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getMetrics",
+        "campaignId": "={{ $json.campaignId }}"
+      },
+      "position": [
+        1130,
+        300
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "continueOnFail": true
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000007",
+      "name": "Report Analytics Entitlement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const r=$input.first().json;\nif(r.error||!Number.isSafeInteger(r.audience))\n return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:'BLOCKED',reason:'CAMPAIGN_ANALYTICS_UNAVAILABLE_OR_DENIED',providerHttpCode:r.httpCode??null,canSend:false,crmEventWriteAuthorized:false}}];\nif(['audience','sent','delivered','read','failed','skipped'].some(k=>!Number.isSafeInteger(r[k])||r[k]<0))throw Error('INVALID_CHATWOOT_METRICS');\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:'PASS',\n  sampledChatwootCampaignId:$('Choose Existing Native WhatsApp Campaign').first().json.campaignId,\n  metrics:{audience:r.audience,sent:r.sent,deliveredIncludingRead:r.delivered,read:r.read,failed:r.failed,skipped:r.skipped},\n  campaignAnalyticsVerifiedOnSample:true,canSend:false,crmEventWriteAuthorized:false}}];"
+      },
+      "position": [
+        1390,
+        190
+      ]
+    },
+    {
+      "id": "af000000-0000-4000-8000-000000000008",
+      "name": "Report No Sample Campaign",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:'UNVERIFIED',reason:'NO_NATIVE_WHATSAPP_CAMPAIGN_TO_TEST',canSend:false}}];"
+      },
+      "position": [
+        1130,
+        430
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - List Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 24 Hours (Inactive Until Enabled)": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - List Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - List Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Choose Existing Native WhatsApp Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Choose Existing Native WhatsApp Campaign": {
+      "main": [
+        [
+          {
+            "node": "Any Sample Campaign?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Sample Campaign?": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - GET Metrics for Capability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report No Sample Campaign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - GET Metrics for Capability": {
+      "main": [
+        [
+          {
+            "node": "Report Analytics Entitlement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
