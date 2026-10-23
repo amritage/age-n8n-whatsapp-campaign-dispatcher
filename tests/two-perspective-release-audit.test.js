@@ -89,7 +89,7 @@ const sourceRefs={
  'Count Espo Campaigns':{first:()=>({json:{readable:true,count:2,activeCount:2}})},
  'Count Native Chatwoot Campaigns':{first:()=>({json:{readable:true,count:3}})}
 };
-for(const hours of [25,27]){
+for(const hours of [25,26,27]){
  const p=run(policy,[row(hours)])[0].json;
  const g=run(global,[row(hours)],sourceRefs)[0].json;
  const expected=hours===25;
@@ -98,6 +98,9 @@ for(const hours of [25,27]){
  assert.equal(p.canSend,false);
  assert.equal(g.canSend,false);
  assert.equal(g.createdCampaigns,0);
+ assert(g.reasons.includes('CAMPAIGN_WINDOW_SUNDAY_AND_MIN_GAP_NOT_VERIFIED'));
+ assert(g.reasons.includes('TEMPLATE_APPROVAL_NOT_VERIFIED'));
+ assert(g.reasons.includes('DAILY_DELIVERED_AND_ATTEMPT_CAP_NOT_VERIFIED'));
 }
 const missing=row();
 delete missing.priorCycleHistoryVerified;
