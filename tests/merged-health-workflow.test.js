@@ -89,6 +89,19 @@ x=final(allSources([],
 assert(x.blockers.includes('EVENT_TABLE_SCAN_LIMIT_EXCEEDED'));
 assert.equal(x.events.readable,false);
 
+// Malformed source data should still produce a HOLD report rather than cancel every later monitor step.
+const badCrm=run('Summarize EspoCRM Campaigns',{input:[item({id:'duplicate'}),item({id:'duplicate'})]})[0].json;
+const badChat=run('Summarize Chatwoot Campaigns',{input:[item({id:5}),item({id:5})]})[0].json;
+assert.equal(badCrm.readable,false);
+assert.equal(badChat.readable,false);
+let malformed=final({...allSources([rich],[]),crm:badCrm,chat:badChat});
+assert(malformed.blockers.includes('ESPOCRM_API_UNAVAILABLE'));
+assert(malformed.blockers.includes('CHATWOOT_API_UNAVAILABLE'));
+malformed=final(allSources([rich],[{occurredAt:beforeHours(1),errorCode:'131050',count:-2,state:'FAILED'}]));
+assert(malformed.blockers.includes('INVALID_RECORDED_EVENT_COUNT'));
+assert.equal(malformed.events.readable,false);
+assert.equal(malformed.canSend,false);
+
 // Independent daily capability probe: a denied Campaign/Get All must be BLOCKED, not confused with an empty inventory.
 const daily=JSON.parse(fs.readFileSync(path.join(__dirname,'../workflows/age-00-chatwoot-analytics-capability.json'),'utf8'));
 const list=daily.nodes.find(n=>n.name==='Chatwoot - List Campaigns');
