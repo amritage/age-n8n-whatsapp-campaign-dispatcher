@@ -1,3 +1,5 @@
+> **Storage design update — 23 October 2026:** Use the [n8n-managed Data Tables design and SQL-free import guide](DATA_TABLE_STORAGE_DECISION.md) for new diagnostics. The earlier custom PostgreSQL schema and Postgres WF-02/WF-04/WF-05/WF-06 are now **optional advanced/legacy examples**, not required for the recommended import. Managed Data Tables are not atomic locks; all these workflows remain non-sending.
+
 # AGE dispatcher workflow pack — v2026-10-23 (Chatwoot 4.19.0)
 
 ## What is delivered
