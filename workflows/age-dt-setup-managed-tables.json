@@ -92,6 +92,10 @@
             {
               "name": "lastVerifiedBatchCompletedAt",
               "type": "date"
+            },
+            {
+              "name": "priorCycleHistoryVerified",
+              "type": "boolean"
             }
           ]
         },
@@ -169,7 +173,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const t=$input.first().json;\nif(!t||!t.id||t.name!=='AGE_Dispatcher_Events')throw new Error('DATA_TABLE_SETUP_FAILED');\nreturn [{json:{mode:'SETUP_ONLY',createdOrReused:['AGE_Portfolio_Control','AGE_Dispatcher_Events'],\n notes:'Create or verify column schemas in the n8n Data Tables UI. This workflow does not seed a Meta portfolio or enable sending.',\n canSend:false}}];"
+        "jsCode": "const t=$input.first().json;\nif(!t||!t.id||t.name!=='AGE_Dispatcher_Events')throw new Error('DATA_TABLE_SETUP_FAILED');\n// Create If Not Exists returns existing tables WITHOUT altering their column schema.\nconst portfolio=$('Data Table - Create or Reuse AGE_Portfolio_Control').first().json;\nif(!portfolio||!portfolio.id||portfolio.name!=='AGE_Portfolio_Control')throw new Error('PORTFOLIO_TABLE_SETUP_FAILED');\nreturn [{json:{mode:'SETUP_ONLY',createdOrReused:['AGE_Portfolio_Control','AGE_Dispatcher_Events'],\n    schemaColumnsNotAutoVerified:true,manualAction:'Confirm existing column types against docs/PRE_N8N_IMPORT_CHECKLIST.md',\n    fieldsDefaultToUnknown:true,portfolioSeeded:false,canSend:false}}];"
       },
       "position": [
         940,
