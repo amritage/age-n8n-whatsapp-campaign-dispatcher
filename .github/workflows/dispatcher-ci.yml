@@ -54,6 +54,8 @@ jobs:
         run: node tests/new-platform-workflows.test.js
       - name: Test SQL-free n8n Data Tables pack and double-send prevention boundary
         run: node tests/native-datatable-architecture.test.js
+      - name: Adversarial two-perspective release audit (n8n runtime and business policy)
+        run: node tests/two-perspective-release-audit.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
