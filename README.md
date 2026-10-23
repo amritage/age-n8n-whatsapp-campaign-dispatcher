@@ -1,3 +1,5 @@
+> **IMPORT READY (23 October 2026, non-sending workflows):** The [two-perspective audit and exact n8n import checklist](docs/PRE_N8N_IMPORT_CHECKLIST.md) is the current source of truth. The recommended files are the SQL-free `age-dt-setup-managed-tables.json`, WF-00, WF-01, WF-02 Data Table, WF-06 Data Table, WF-04 Data Table and WF-05 Data Table. Do **not** enable LIVE: these are diagnostics, managed table setup and a strict DRY_RUN/HOLD. The alternative PostgreSQL files are optional advanced reference, not part of this import.
+
 > **Storage design update — 23 October 2026:** Use the [n8n-managed Data Tables design and SQL-free import guide](docs/DATA_TABLE_STORAGE_DECISION.md) for new diagnostics. The earlier custom PostgreSQL schema and Postgres WF-02/WF-04/WF-05/WF-06 are now **optional advanced/legacy examples**, not required for the recommended import. Managed Data Tables are not atomic locks; all these workflows remain non-sending.
 
 
