@@ -56,6 +56,8 @@ jobs:
         run: node tests/native-datatable-architecture.test.js
       - name: Adversarial two-perspective release audit (n8n runtime and business policy)
         run: node tests/two-perspective-release-audit.test.js
+      - name: Verify merged 6-hour operational health and business-rule safeguards
+        run: node tests/merged-health-workflow.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
