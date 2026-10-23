@@ -1,0 +1,119 @@
+{
+  "id": "AGEwf04Errors26V1",
+  "name": "AGE 04 - Meta Error Policy Watch - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "af040000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "af040000-0000-4000-8000-000000000002",
+      "name": "Schedule - Every 6 Hours (Inactive Until Enabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        410
+      ]
+    },
+    {
+      "id": "af040000-0000-4000-8000-000000000003",
+      "name": "Postgres - Read Error Codes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT error_code, COUNT(*)::integer AS occurrences,\n MAX(reserved_at) AS last_seen,\n COUNT(*) FILTER (WHERE status IN ('RESERVED','SUBMISSION_UNKNOWN','SUBMITTED'))::integer AS unsettled\n FROM age_dispatcher.reservation\n WHERE reserved_at >= now()-interval '30 days' AND error_code IS NOT NULL\n GROUP BY error_code ORDER BY occurrences DESC LIMIT 100;",
+        "options": {
+          "queryBatching": "single",
+          "largeNumbersOutput": "text"
+        }
+      },
+      "position": [
+        460,
+        300
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "af040000-0000-4000-8000-000000000004",
+      "name": "Classify Meta Errors Without Mutation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const a=$input.all().map(i=>i.json).filter(x=>x&&Object.keys(x).length);\nif(a.some(x=>x.error))return [{json:{mode:'READ_ONLY',result:'BLOCKED',reason:'LEDGER_ERROR_OR_MISSING',canSend:false}}];\nconst out=a.map(x=>{\n const code=String(x.error_code||'');\n const policy=code==='131050'?'MARKETING_OPT_OUT_HARD_SUPPRESSION_REQUIRED':\n code==='131048'?'QUALITY_RESTRICTION_SUSPEND_AND_REVIEW':\n code==='131049'?'RECIPIENT_MARKETING_HOLD_EXISTING_CRM_POLICY':\n code==='131026'?'UNDELIVERABLE_UNKNOWN_DO_NOT_MARK_UNREGISTERED':\n code==='130472'?'MARKETING_EXPERIMENT_DELAYED_REVIEW':\n code==='132015'?'TEMPLATE_PACING_QUALITY_REVIEW':'UNKNOWN_REQUIRES_REVIEW';\n return {code,count:Number(x.occurrences)||0,latest:x.last_seen,classification:policy};\n});\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:out.length?'REVIEW':'NO_ERRORS_RECORDED',\n errors:out,marketingOptouts:out.filter(x=>x.code==='131050').reduce((sum,x)=>sum+x.count,0),\n changesMade:0,canSend:false,crmEventWriteAuthorized:false,\n note:'Read-only exceptions; CRM suppression write and provider opt-out sync are NOT yet connected.'}}];"
+      },
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Read Error Codes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 6 Hours (Inactive Until Enabled)": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Read Error Codes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Read Error Codes": {
+      "main": [
+        [
+          {
+            "node": "Classify Meta Errors Without Mutation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
