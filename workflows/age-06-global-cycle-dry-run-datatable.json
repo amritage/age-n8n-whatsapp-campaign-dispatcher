@@ -52,7 +52,9 @@
         "operation": "getAll",
         "entityType": "Campaign",
         "returnAll": true,
-        "filterOptions": {}
+        "filterOptions": {
+          "select": "id,name,status,ageProvider,ageInboxId"
+        }
       },
       "position": [
         420,
@@ -61,7 +63,8 @@
       "alwaysOutputData": true,
       "retryOnFail": true,
       "maxTries": 2,
-      "waitBetweenTries": 3000
+      "waitBetweenTries": 3000,
+      "continueOnFail": true
     },
     {
       "id": "bc000000-0000-4000-8000-600000000004",
@@ -93,7 +96,8 @@
       "alwaysOutputData": true,
       "retryOnFail": true,
       "maxTries": 2,
-      "waitBetweenTries": 3000
+      "waitBetweenTries": 3000,
+      "continueOnFail": true
     },
     {
       "id": "bc000000-0000-4000-8000-600000000006",
