@@ -1,3 +1,5 @@
+> **Storage design update — 23 October 2026:** Use the [n8n-managed Data Tables design and SQL-free import guide](docs/DATA_TABLE_STORAGE_DECISION.md) for new diagnostics. The earlier custom PostgreSQL schema and Postgres WF-02/WF-04/WF-05/WF-06 are now **optional advanced/legacy examples**, not required for the recommended import. Managed Data Tables are not atomic locks; all these workflows remain non-sending.
+
 
 ## NEW: Research-based seven-workflow pack — 23 October 2026
 
