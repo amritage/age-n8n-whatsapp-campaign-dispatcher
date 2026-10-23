@@ -1,4 +1,9 @@
 
+## Verified platform research — 23 October 2026
+
+The [official Meta, Chatwoot, n8n and EspoCRM documentation review](docs/PLATFORM_RESEARCH_2026-10-23.md) identifies important design gates before the new dispatcher can send: self-hosted Chatwoot **campaign sending is not equivalent to paid campaign analytics access**, v4.19's 100-contact background worker **requeries mutable labels**, WhatsApp can use **BSUID-only identities** without phone numbers, Meta's portfolio-wide **rolling 24h unique-user limit** is distinct from AGE's delivered target and **per-delivered-message cost**, and n8n **queue-mode concurrency requires transactional PostgreSQL reservation/idempotency**. Do not change old extensions/workflows. Research was saved for implementation; no new LIVE permissions were granted.
+
+
 ## Independent operations audit — version and reporting caveats (2026-10-22)
 
 **Please read [the adversarial deployment audit](docs/RED_TEAM_AUDIT_2026-10-22.md) before enabling any automated sending.** The operator **confirmed Chatwoot v4.19.0 is currently installed (2026-10-22)**. This resolves the prior v4.17.1-versus-v4.19.0 architecture uncertainty: the inspected v4.19.0 source provides the native 100-contact batch worker needed for the selected design. Deployment version was confirmed in conversation, **not independently inspected through the running Chatwoot service**. No Chatwoot upgrade is requested or necessary for the planned design.
