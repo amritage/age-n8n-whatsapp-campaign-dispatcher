@@ -1,0 +1,119 @@
+{
+  "id": "AGEwf05Ops26V001",
+  "name": "AGE 05 - Operations Ledger Dashboard - Read Only",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
+  },
+  "nodes": [
+    {
+      "id": "af050000-0000-4000-8000-000000000001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "id": "af050000-0000-4000-8000-000000000002",
+      "name": "Schedule - Every 6 Hours (Inactive Until Enabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "position": [
+        180,
+        410
+      ]
+    },
+    {
+      "id": "af050000-0000-4000-8000-000000000003",
+      "name": "Postgres - Read Operations Ledger",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH c AS (SELECT status, count(*)::integer AS count FROM age_dispatcher.cycle GROUP BY status),\n b AS (SELECT state, count(*)::integer AS count FROM age_dispatcher.batch GROUP BY state),\n r AS (SELECT status, count(*)::integer AS count FROM age_dispatcher.reservation GROUP BY status)\nSELECT (SELECT COALESCE(jsonb_agg(to_jsonb(c)),'[]'::jsonb) FROM c) AS cycles,\n (SELECT COALESCE(jsonb_agg(to_jsonb(b)),'[]'::jsonb) FROM b) AS batches,\n (SELECT COALESCE(jsonb_agg(to_jsonb(r)),'[]'::jsonb) FROM r) AS recipients,\n (SELECT count(*)::integer FROM age_dispatcher.portfolio) AS portfolios,\n (SELECT count(*)::integer FROM age_dispatcher.preflight_view WHERE reason='READY_FOR_OTHER_PRECHECKS') AS ready_for_other_checks;",
+        "options": {
+          "queryBatching": "single",
+          "largeNumbersOutput": "text"
+        }
+      },
+      "position": [
+        460,
+        300
+      ],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "af050000-0000-4000-8000-000000000004",
+      "name": "Summarize Ledger Counters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const j=$input.first()?.json||{};\nif(j.error)return [{json:{mode:'READ_ONLY',result:'BLOCKED',reason:'POSTGRES_DASHBOARD_UNAVAILABLE',canSend:false}}];\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:'INVENTORY_ONLY',\n portfolios:Number(j.portfolios)||0,cycles:j.cycles??[],batches:j.batches??[],\n recipients:j.recipients??[],readyForOtherChecks:Number(j.ready_for_other_checks)||0,\n liveReleaseAuthorized:false,canSend:false,note:'Operational ledger inventory; not a verified provider delivery or billing report.'}}];"
+      },
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Read Operations Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 6 Hours (Inactive Until Enabled)": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Read Operations Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Read Operations Ledger": {
+      "main": [
+        [
+          {
+            "node": "Summarize Ledger Counters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
