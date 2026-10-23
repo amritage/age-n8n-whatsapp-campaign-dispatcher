@@ -5,6 +5,10 @@
 > **Storage design update — 23 October 2026:** Use the [n8n-managed Data Tables design and SQL-free import guide](docs/DATA_TABLE_STORAGE_DECISION.md) for new diagnostics. The earlier custom PostgreSQL schema and Postgres WF-02/WF-04/WF-05/WF-06 are now **optional advanced/legacy examples**, not required for the recommended import. Managed Data Tables are not atomic locks; all these workflows remain non-sending.
 
 
+## n8n Data Table demo CSV import files
+
+For a **CSV-first setup**, use the [Data Tables sample folder](examples/n8n-data-tables/README.md) containing **20 portfolio test rows**, **34 operational event test rows**, exact column types, import steps, and safe demo-row cleanup. If you create both Data Tables via CSV import, **skip the separate Data Tables setup workflow**. The CSVs contain simulated values only; never treat them as real Meta evidence or sending approval.
+
 ## NEW: Research-based seven-workflow pack — 23 October 2026
 
 **Start here:** [Import and architecture guide for all seven NEW workflows](docs/WORKFLOW_PACK_2026-10-23.md). All workflow JSONs are in [`workflows/`](workflows/). No manual EspoCRM/Chatwoot campaign IDs, API tokens or instance URLs are baked into the workflow code. The installed community EspoCRM and Chatwoot nodes plus the built-in Postgres node are used; bind existing credentials **once** in n8n.
