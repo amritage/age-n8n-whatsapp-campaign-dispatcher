@@ -55,7 +55,11 @@
           "mode": "name",
           "value": "AGE_Dispatcher_Events"
         },
-        "returnAll": true
+        "returnAll": false,
+        "limit": 3001,
+        "orderBy": true,
+        "orderByColumn": "occurredAt",
+        "orderByDirection": "DESC"
       },
       "position": [
         480,
