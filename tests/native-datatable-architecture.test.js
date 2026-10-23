@@ -24,7 +24,14 @@ for(let ix=0;ix<files.length;ix++){
     }else{
       assert.equal(n.parameters.resource,'row');
       assert.equal(n.parameters.operation,'get');
-      assert.equal(n.parameters.returnAll,true);
+      assert.equal(n.parameters.returnAll,false, 'bounded Data Table reads only');
+      const event=n.parameters.dataTableId.value==='AGE_Dispatcher_Events';
+      assert.equal(n.parameters.limit,event?3001:51);
+      if(event){
+       assert.equal(n.parameters.orderBy,true);
+       assert.equal(n.parameters.orderByColumn,'occurredAt');
+       assert.equal(n.parameters.orderByDirection,'DESC');
+      }
       assert.equal(n.parameters.dataTableId.mode,'name');
       assert(['AGE_Portfolio_Control','AGE_Dispatcher_Events'].includes(n.parameters.dataTableId.value));
     }
@@ -60,4 +67,4 @@ let c=run(4,'Report Global DRY RUN Holds',[{portfolioId:'portfolio-a',masterSend
 });
 assert.equal(c[0].json.mode,'DRY_RUN');assert.equal(c[0].json.canSend,false);assert.equal(c[0].json.createdCampaigns,0);
 assert(c[0].json.reasons.includes('NO_PRODUCTION_SENDING_GATE'));
-console.log('PASS: native n8n 2.37 Data Tables workflows, no SQL, duplicate portfolio detection, Meta 131050 classification, no live sends');
+console.log('PASS: native n8n 2.37 Data Tables workflows, bounded reads, duplicate portfolio detection, Meta 131050 classification, no live sends');
