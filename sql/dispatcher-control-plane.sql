@@ -1,3 +1,10 @@
+-- OPTIONAL ADVANCED REFERENCE ONLY (23 OCT 2026):
+-- AGE now prefers n8n-managed Data Tables for current preflight, dashboards and
+-- lightweight audit checkpoints. DO NOT RUN THIS DDL for those workflows.
+-- If future LIVE campaigns require truly atomic multi-worker reservations, review
+-- a SEPARATE application-managed database/schema and explicit deployment approval.
+-- See docs/DATA_TABLE_STORAGE_DECISION.md for the safe zero-SQL default.
+--
 -- AGE Multi-Campaign Dispatcher control plane v1, PostgreSQL >=16.
 -- PRIVATE N8N POSTGRES DATABASE ONLY. Not Chatwoot or EspoCRM production DB.
 -- Apply ONLY after review/backup. Default state is FAIL-CLOSED and NO LIVE SENDING.
