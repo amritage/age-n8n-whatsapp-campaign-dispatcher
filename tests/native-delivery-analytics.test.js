@@ -1,74 +1,96 @@
 'use strict';
-const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+
 const w=JSON.parse(fs.readFileSync(path.join(__dirname,'../workflows/age-07-delivery-read-analytics-native.json'),'utf8'));
-const node=name=>w.nodes.find(n=>n.name===name);
-function run(name,inputs={},ref={},now=Date.parse('2026-10-24T06:00:00Z')){
- const c=node(name)?.parameters?.jsCode;assert(c,'Missing code '+name);
- const Fixed=class extends Date{constructor(...args){super(...args.length?args:[now]);}static now(){return now;}};
- return vm.runInNewContext('(function(){'+c+'\n})()',{
-  $input:{all:()=>inputs.items||[],first:()=>(inputs.items||[])[0]},
-  $:key=>({all:()=>ref[key]||[],first:()=>(ref[key]||[])[0]}),
-  Date:Fixed
- },{timeout:2500});
+const byName=name=>w.nodes.find(n=>n.name===name);
+const pg=byName('Chatwoot PostgreSQL - Read Campaign Rollups');
+const validator=byName('Validate Counts and Produce Safe Analytics');
+const row=(x)=>({json:x});
+function evaluate(items){
+ const code=validator.parameters.jsCode;
+ const D=class extends Date {constructor(...a){super(...(a.length?a:['2026-10-24T10:00:00Z']));} static now(){return Date.parse('2026-10-24T10:00:00Z');}};
+ return vm.runInNewContext('(function(){'+code+'\n})()',
+  {$input:{all:()=>items},Date:D},{timeout:2000})[0].json;
 }
-const it=(json,p)=>({json,...(p===undefined?{}:{pairedItem:{item:p}})});
+const good={
+ account_id:2,internal_campaign_id:99,campaign_display_id:2,campaign_name:'Synthetic demo',
+ inbox_id:5,audience:'910',queued:'0',skipped:'0',sent_only:'3',
+ delivered_only:'155',read_confirmed:'505',failed:'247',
+ delivered_including_read:'660',provider_id_present:'910',wamid_format:'910',
+ delivered_timestamps:'660',read_timestamps:'505',failure_timestamps:'247',
+ coded_failures:'247',last_recipient_update:'2026-10-09T16:02:32',
+ error_code_counts:{'131026':'90','131049':'157'}
+};
 assert.equal(w.active,false);
 assert.equal(w.settings.saveDataSuccessExecution,'none');
 assert.equal(w.settings.saveManualExecutions,false);
-assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.postgres'||n.type==='n8n-nodes-base.httpRequest'));
-assert(!w.nodes.some(n=>n.credentials));
-for(const n of w.nodes.filter(x=>x.type.includes('n8n-nodes-chatwoot'))){
- assert(['getAll','getMetrics','getRecipients'].includes(n.parameters.operation));
- assert.equal(n.continueOnFail,true);
-}
-assert.equal(node('Chatwoot - Get Failed Recipients').parameters.options.status,'failed');
-assert.equal(node('Chatwoot - Get Failed Recipients').parameters.returnAll,false);
-assert.equal(node('Chatwoot - Get Failed Recipients').parameters.limit,501);
-const p='Select Recent Campaigns - Rotating Batches',a='Attach Campaign Context to Metrics',f='Validate and Report Aggregate Failures';
-let empty=run(p,{items:[]});assert.equal(empty[0].json.hasCampaign,false);
-let unavailable=run(p,{items:[it({error:'403'})]});assert.equal(unavailable[0].json.availability,'BLOCKED');
-const campaigns=[it({id:52,title:'W Bengal batch',campaign_type:'one_off',campaign_status:'completed',
- completed_at:1792800000,inbox:{channel_type:'Channel::Whatsapp'}}),
-it({id:53,campaign_type:'one_off',campaign_status:'processing',started_at:1792800001,inbox:{channel_type:'Channel::Whatsapp'}}),
-it({id:61,campaign_type:'ongoing',campaign_status:'active',inbox:{channel_type:'Channel::WebWidget'}})];
-const selected=run(p,{items:campaigns});
-assert.equal(selected.length,2);
-assert.equal(selected[0].json.campaignId,53);
-const good={
- audience:5,sent:4,delivered:3,read:2,failed:1,skipped:1,
- status_counts:{queued:0,skipped:1,sent:0,delivered:1,read:2,failed:1}
-};
-// 0+1+0+1+2+1 = 5
-const metrics=[it(good,0),it({audience:1,sent:1,delivered:1,read:1,failed:0,skipped:0,
- status_counts:{queued:0,skipped:0,sent:0,delivered:0,read:1,failed:0}},1)];
-const ctx=run(a,{items:metrics},{[p]:selected});
-assert.equal(ctx.length,2);
-assert.equal(ctx[0].json.counts.deliveredIncludingRead,3);
-assert.equal(ctx[0].json.counts.readConfirmed,2);
-assert.equal(ctx[0].json.counts.deliveredWithoutRead,1);
-const out=run(f,{items:[it({contact:{id:8088},status:'failed',error_code:'131049'},0)]},{[a]:ctx})[0].json;
-assert.equal(out.status,'AGGREGATES_ONLY');assert.equal(out.reports.length,2);
-assert.equal(out.reports[0].errorCodeCounts['131049'],1);
-assert.equal(out.reports[1].counts.readConfirmed,1);
-assert.equal(out.reports[1].counts.deliveredIncludingRead,1); // READ already counted in delivery
-assert.equal(out.espocrmWrites,0);
-assert.equal(out.reports[0].canWriteEspoEvents,false);
-assert(!JSON.stringify(out).includes('phone_number'));
-let mismatch=run(f,{items:[]},{[a]:ctx})[0].json;
-assert.equal(mismatch.status,'PARTIAL_OR_BLOCKED');
-assert(mismatch.reports[0].reasons.includes('FAILURE_COUNT_MISMATCH'));
-assert.throws(()=>run(a,{items:[it({...good,delivered:5},0),metrics[1]]},{[p]:selected}),/CHATWOOT_DELIVERED_READ_COUNT_MISMATCH/);
-assert.throws(()=>run(a,{items:[it(good),metrics[1]]},{[p]:selected}),/PROVIDER_METRICS_PAIRING_MISSING/);
-const access=run(a,{items:[it({error:'Forbidden',httpCode:'403'},0),metrics[1]]},{[p]:selected});
-const denied=run(f,{items:[it({error:'Forbidden'},0)]},{[a]:access})[0].json;
-assert.equal(denied.status,'PARTIAL_OR_BLOCKED');
-assert(denied.reports[0].reasons.includes('ANALYTICS_UNAVAILABLE'));
-const overLimit=run(f,{items:[]},{[a]:ctx.map((v,i)=>i===0?{...v,json:{...v.json,expectedFailed:501}}:v)})[0].json;
-assert(overLimit.reports[0].reasons.includes('FAILURE_SCAN_LIMIT_EXCEEDED'));
-const noReport=run('No Reportable Campaigns',{items:unavailable})[0].json;assert.equal(noReport.status,'BLOCKED');
-const all=Array.from({length:70},(_,i)=>it({id:100+i,campaign_type:'one_off',campaign_status:i<5?'processing':'completed',
- started_at:1792800000+i,completed_at:i<5?null:1792800000+i,inbox:{channel_type:'Channel::Whatsapp'}}));
-let batched=run(p,{items:all});assert(batched.length<=5);
-assert(batched[0].json.scan.partialScan);
-assert.equal(batched[0].json.scan.totalActive,5);
-console.log('PASS: auto-discovery, bounded rotating batches, Chatwoot v4.19 Read-in-delivered union, failure code attribution and 403/missing evidence blocking');
+assert(!w.nodes.some(n=>n.credentials),'Never embed credentials');
+assert.equal(w.nodes.filter(n=>n.type==='n8n-nodes-base.postgres').length,1);
+assert.equal(w.nodes.filter(n=>n.type==='n8n-nodes-base.code').length,1);
+assert.equal(w.nodes.filter(n=>n.type==='n8n-nodes-base.dataTable').length,0);
+assert(!w.nodes.some(n=>n.type.includes('chatwoot')||n.type==='n8n-nodes-base.httpRequest'));
+assert.equal(pg.parameters.operation,'executeQuery');
+assert.equal(pg.continueOnFail,true);
+assert(pg.parameters.query.includes('c.account_id = 2'));
+assert(pg.parameters.query.includes("i.channel_type = 'Channel::Whatsapp'"));
+assert(pg.parameters.query.includes('COUNT(cr.id) FILTER (WHERE cr.status = 4)'));
+assert(pg.parameters.query.includes('COALESCE(e.error_code_counts'));
+assert(pg.parameters.query.includes('LIMIT 201'));
+assert(!/\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\s+(?:INTO|TABLE|FROM|campaigns|campaign_recipients|public)/i.test(pg.parameters.query),
+ 'No write SQL');
+
+const result=evaluate([row(good)]);
+assert.equal(result.status,'SNAPSHOT_VALID');
+assert.equal(result.reportCount,1);
+assert.equal(result.reports[0].counts.audience,910);
+assert.equal(result.reports[0].counts.deliveredIncludingRead,660);
+assert.equal(result.reports[0].counts.readConfirmed,505);
+assert.equal(result.reports[0].counts.deliveredOnly,155);
+assert.equal(result.reports[0].counts.failed,247);
+assert.equal(result.reports[0].readPctOfDelivered,76.52);
+assert.equal(result.reports[0].errorCodeCounts['131049'],157);
+assert.equal(result.reports[0].mapping,'UNMATCHED');
+assert.equal(result.espocrmMappingVerified,false);
+assert.equal(result.crmEventWrites,0);
+assert.equal(result.dataTableWrites,0);
+assert.equal(result.sends,0);
+assert.equal(result.licensePermissionVerified,false);
+assert(!JSON.stringify(result).includes('phone_number'));
+assert(!JSON.stringify(result).includes('message_content'));
+
+const error=evaluate([row({error:'permission denied for table campaigns'})]);
+assert.equal(error.status,'BLOCKED');
+assert(!JSON.stringify(error).includes('permission denied'));
+const empty=evaluate([row({})]);
+assert.equal(empty.status,'NO_MATCHING_CAMPAIGNS');
+
+const missingId=evaluate([row({...good,provider_id_present:'909',wamid_format:'909'})]);
+assert.equal(missingId.status,'PARTIAL');
+assert(missingId.reports[0].reasons.includes('PROVIDER_IDS_INCOMPLETE'));
+const noReadTime=evaluate([row({...good,read_timestamps:'504'})]);
+assert.equal(noReadTime.status,'PARTIAL');
+assert(noReadTime.reports[0].reasons.includes('READ_TIMESTAMPS_INCOMPLETE'));
+const countMismatch=evaluate([row({...good,read_confirmed:'506'})]);
+assert.equal(countMismatch.status,'BLOCKED');
+assert(countMismatch.reports[0].reasons.includes('STATUS_TOTAL_MISMATCH'));
+const noErrorCodes=evaluate([row({...good,coded_failures:'200',error_code_counts:{'131049':'200',UNKNOWN:'47'}})]);
+assert.equal(noErrorCodes.status,'PARTIAL');
+assert(noErrorCodes.reports[0].reasons.includes('MISSING_META_ERROR_CODES'));
+const badErrorCounts=evaluate([row({...good,error_code_counts:{'131049':'2'}})]);
+assert.equal(badErrorCounts.status,'BLOCKED');
+assert(badErrorCounts.reports[0].reasons.includes('ERROR_ROLLUP_MISMATCH'));
+const missingRows=evaluate([row({...good,audience:'0',delivered_only:'0',read_confirmed:'0',delivered_including_read:'0',
+ sent_only:'0',failed:'0',provider_id_present:'0',wamid_format:'0',delivered_timestamps:'0',
+ read_timestamps:'0',failure_timestamps:'0',coded_failures:'0',error_code_counts:{}})]);
+assert.equal(missingRows.status,'PARTIAL');
+assert(missingRows.reports[0].reasons.includes('NO_RECIPIENT_EVIDENCE'));
+
+const big=evaluate(Array.from({length:201},(_,i)=>row({...good,internal_campaign_id:i+1})));
+assert.equal(big.status,'PARTIAL');
+assert.equal(big.scanComplete,false);
+assert.equal(big.reason,'SCAN_LIMIT_201_REACHED');
+
+console.log('PASS: AGE 07 PostgreSQL-only, disabled/no secrets/no writes, verified status unions, errors, gaps, limit and fail-closed behavior');
