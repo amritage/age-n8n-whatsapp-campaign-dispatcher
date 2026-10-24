@@ -5,6 +5,14 @@
 > **Storage design update — 23 October 2026:** Use the [n8n-managed Data Tables design and SQL-free import guide](docs/DATA_TABLE_STORAGE_DECISION.md) for new diagnostics. The earlier custom PostgreSQL schema and Postgres WF-02/WF-04/WF-05/WF-06 are now **optional advanced/legacy examples**, not required for the recommended import. Managed Data Tables are not atomic locks; all these workflows remain non-sending.
 
 
+## Mandatory future workflow behavior — WhatsApp delivery and Read reconciliation
+
+**Development acceptance requirement (24 October 2026):** For **all Meta WhatsApp Business API campaigns sent via Chatwoot**, n8n must reliably reconcile campaign/recipient delivery, failure, exact Meta errors, and other key metrics into EspoCRM. **A confirmed Read proves delivery for that same message; Delivered-inclusive-of-Read is a distinct-message union, not Delivered + Read.** Collect Read only where existing Meta/Chatwoot evidence exposes it, without new paid dependencies or unnecessary complexity. Duplicate/out-of-order events and retries must not double-count delivery. Missing analytics access or provider evidence must be reported honestly.
+
+**Authoritative specification and required regression cases:** [WhatsApp Campaign Delivery & Reconciliation Requirements](docs/WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md).
+
+**Implementation status:** *Required for future development, not yet implemented end to end.* The currently recommended three-workflow diagnostic pack remains read-only; it does not yet persist reliable Meta message-level receipts to EspoCRM. No existing production extensions/workflows/Chatwoot code should be changed without separate authorization.
+
 ## n8n Data Table demo CSV import files
 
 For a **CSV-first setup**, use the [Data Tables sample folder](examples/n8n-data-tables/README.md) containing **20 portfolio test rows**, **34 operational event test rows**, exact column types, import steps, and safe demo-row cleanup. If you create both Data Tables via CSV import, **skip the separate Data Tables setup workflow**. The CSVs contain simulated values only; never treat them as real Meta evidence or sending approval.
