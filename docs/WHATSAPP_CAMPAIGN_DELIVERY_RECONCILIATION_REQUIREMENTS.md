@@ -1,5 +1,8 @@
 # Mandatory development requirement — WhatsApp campaign outcomes and analytics
 
+> **New implementation step (24 October 2026):** [AGE 03 recipient-level manual PostgreSQL page](../workflows/age-03-chatwoot-evidence-readonly.json) and [guarded candidate matcher](../src/recipient-outcome-candidates.js) are committed as read-only development components, with parameterized keyset paging, Read/Failed/timestamp evidence and exact-identity fail-closed matching. Existing AGE 07 aggregate reporting is unchanged. **Neither component has been tested against live AGE 03 data or authorized to write to EspoCRM**. See [implementation and limitations](RECIPIENT_EVIDENCE_PAGING_AND_MATCHING_2026-10-24.md).
+
+
 **Approved business requirement:** 24 October 2026  
 **Applies to:** All WhatsApp campaigns sent through Chatwoot using the official Meta WhatsApp Business API, including campaigns mapped to EspoCRM, all their Chatwoot one-off batches, recipients and retries.
 
