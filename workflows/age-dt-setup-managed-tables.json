@@ -1,6 +1,6 @@
 {
   "id": "AGEdtSetup1026v1",
-  "name": "AGE DT-SETUP - Create Managed n8n Data Tables (Manual Only)",
+  "name": "[OPTIONAL SETUP - MANUAL] AGE DT-SETUP - Create Managed n8n Data Tables (Manual Only)",
   "active": false,
   "settings": {
     "executionOrder": "v1",
