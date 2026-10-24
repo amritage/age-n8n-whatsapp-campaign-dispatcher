@@ -1,5 +1,57 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Full n8n Compose review — 24 October 2026, approximately 20:05 IST (needs correction before deploy)
+
+**Operator provided the full current n8n SOURCE Compose** for image v2.44.6. This supersedes prior partial-snippet ambiguity.
+
+### Confirmed correct
+
+- `services.n8n.networks: [default, chatwoot_private]`, sibling of the healthcheck.
+- `services.n8n-worker.networks: [default, chatwoot_private]`, after the complete `depends_on` block.
+- `networks.chatwoot_private.external: true`, `name: au4akmkdy3bkd76n7m0ay0ky`.
+- Both n8n main and worker have `QUEUE_BULL_REDIS_HOST=redis-l11w6qi16cakcn9f855wbbk1` (unambiguous intended Redis hostname; still re-test after network changes), own PostgreSQL host `postgresql`, and n8n queue mode. No literal passwords were supplied in this reviewed source.
+
+### Remaining critical concern: missing explicit declaration for sandbox network
+
+The services `sandbox-certs`, `sandbox-api`, and `sandbox-runner-1` each specify:
+
+```yaml
+    networks:
+      - l11w6qi16cakcn9f855wbbk1
+```
+
+but the **only** root-level `networks:` entry in the supplied Compose is `chatwoot_private`. Under ordinary Docker Compose parsing, a service that references a non-declared named network fails config validation (`undefined network`). Coolify may inject the resource network during **Deployable Compose** generation, but this was not shown and **must not be assumed**.
+
+**Candidate consistent minimal fix when using the existing Compose `default` network as the canonical n8n network:**
+
+1. For those three sandbox services **only**, change the network reference from `- l11w6qi16cakcn9f855wbbk1` to `- default`. Do not change image, volumes, certs, permissions, or dependencies.
+2. At the current bottom root `networks:` section add an explicit `default` entry pointing to the **already existing** n8n private network:
+
+```yaml
+networks:
+  default:
+    external: true
+    name: l11w6qi16cakcn9f855wbbk1
+  chatwoot_private:
+    external: true
+    name: au4akmkdy3bkd76n7m0ay0ky
+```
+
+The other n8n components (`postgresql`, `redis`, `task-runners`, `searxng`) retain implicit `default` membership. This is intended to preserve the actual physical UUID network. `external: true` prevents the n8n Compose deployment from creating or destroying the Coolify resource network; **verify that network continues to be created/managed by Coolify across redeploys**. If the generated Compose already explicitly injects the UUID network in a correct manner, prefer the smallest patch verified by the preview rather than unnecessarily rewriting sandbox services.
+
+### Pre-deployment nonnegotiables
+
+- Review **Preview Generated Compose / Show Deployable Compose** after edit and confirm parsing succeeds, there are no duplicate networks or networks missing, and the generated `default` physical name is `l11w6qi16cakcn9f855wbbk1`.
+- Confirm each sandbox service and n8n main/worker and own Postgres/Redis still share the correct network and that `n8n` and worker also include `chatwoot_private`.
+- Confirm proxy routing via n8n resource network is preserved. Coolify's proxy normally attaches to the resource network, but check its actual generated definition instead of relying on the currently observed `coolify` attachment.
+- Verify a current restorable n8n PostgreSQL backup, volumes untouched, and queue-worker/runners health. Only then conduct an **n8n-only**, supervised redeploy (no Chatwoot restart; no image upgrade).
+- After: verify n8n HTTPS, main and worker health, task runners, Redis and Postgres, internal DB credential, AGE 07 read-only analytics and durable network memberships. Never deploy source Compose solely because it appears syntactically indented.
+
+**Status: reviewed but not saved/deployed/validated by assistant.** Actual Coolify generated result has not been provided yet.
+
+Sources: [Docker Compose networks reference](https://docs.docker.com/reference/compose-file/networks/), [Coolify source/deployable distinction](https://coolify.io/docs/services/how-services-work), [Coolify networking](https://coolify.io/docs/services/configuration/networking).
+
+
 ## Operator follow-up — 24 October 2026: preview step reported done, generated configuration not yet inspected
 
 The operator reports 'done' after being instructed to open **Preview Generated Compose**. This does **not** independently verify whether the preview generated successfully, whether changes were saved/redeployed, or whether the generated Compose retains the correct network routes. **Do not mark persistent networking complete based on this message alone.**
