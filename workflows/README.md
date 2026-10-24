@@ -8,8 +8,8 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 
 | Status | File | Why |
 |---|---|---|
-| **undefined** | [`undefined`](undefined) | undefined; undefined |
-| **undefined** | [`undefined`](undefined) | undefined; undefined |
+| **USE NOW — READ ONLY** | [`age-unified-six-hour-health-readonly.json`](age-unified-six-hour-health-readonly.json) | Cross-system six-hour diagnostic; import inactive and manually test before scheduling |
+| **USE NOW — READ ONLY** | [`age-07-delivery-read-analytics-native.json`](age-07-delivery-read-analytics-native.json) | Delivered/Read/error campaign analytics; only enable if Chatwoot permissions allow it |
 
 **Recommended schedules:** Both read-only monitors can run every 6 hours. Activate them separately only after manual tests. AGE 07 depends on Chatwoot campaign analytics entitlement; if the API returns 403 or BLOCKED, leave it inactive. The unified monitor can continue independently. **Do not also enable AGE 00 or the older recipient-report variants.**
 
@@ -17,8 +17,8 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 
 | Status | File | Instruction |
 |---|---|---|
-| **undefined** | [`undefined`](undefined) | undefined |
-| **undefined** | [`undefined`](undefined) | undefined |
+| **OPTIONAL SETUP** | [`age-dt-setup-managed-tables.json`](age-dt-setup-managed-tables.json) | One-time Data Tables creator; skip when CSV-created tables already exist |
+| **DEV ONLY — NOT CONNECTED** | [`age-08-verified-message-evidence-reducer.json`](age-08-verified-message-evidence-reducer.json) | Not deployable alone; requires verified event producer and persistent reconciliation |
 
 **CSV-first option:** Create `AGE_Portfolio_Control` and `AGE_Dispatcher_Events` from the [sample CSV instructions](../examples/n8n-data-tables/README.md), verify column types, then remove demo rows. **Skip** the table-creation JSON if the tables already exist correctly.
 
