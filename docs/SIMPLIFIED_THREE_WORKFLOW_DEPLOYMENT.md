@@ -9,7 +9,7 @@
 |---|---|---|
 | Optional one-time setup | [Data Tables setup](../workflows/age-dt-setup-managed-tables.json) | Only use when `AGE_Portfolio_Control` and `AGE_Dispatcher_Events` do not exist and weren't created from [CSV samples](../examples/n8n-data-tables/README.md). Run manually once. |
 | 1 | [Unified 6-hour health monitor](../workflows/age-unified-six-hour-health-readonly.json) | Import inactive, choose existing EspoCRM/Chatwoot credentials, run manually. It reads managed Data Tables and reports `HOLD` (zero sends). After successful test, enable its optional six-hour schedule. |
-| 2 | [AGE 07 WhatsApp Delivered/Read/Error analytics](../workflows/age-07-delivery-read-analytics-native.json) | Import inactive, choose Chatwoot credential, run manually. If Chatwoot's Enterprise campaign analytics is not entitled (401/403/404), leave its schedule disabled; that is a valid BLOCKED result. If authorized and working, an optional six-hour scan processes up to five native campaigns per run. |
+| 2 | [AGE 07 PostgreSQL Delivered/Read/Error snapshot](../workflows/age-07-delivery-read-analytics-native.json) | **New source-based replacement, inactive by default.** Review licensing; bind a separate SELECT-only Chatwoot PostgreSQL credential; run manually, verify against campaign 2's documented reference counts. **Do not schedule before credential/entitlement/SQL review.** This is an aggregate snapshot, not an EspoCRM event writer. |
 
 **AGE 08** [provider evidence reducer](../workflows/age-08-verified-message-evidence-reducer.json) is **NOT an active fourth workflow**. It has no verified event collector, no durable cross-run ledger and no authenticated mapping to AGE attempts. It is developer-only.
 
@@ -19,19 +19,24 @@
 
 - Both current workflows are read-only and committed `active:false`.
 - Unified health **never launches campaigns** or writes EspoCRM data; it reports only available controls, source health, and recorded events.
-- AGE 07 returns Chatwoot campaign analytics **Delivered already inclusive of Read**. Read is a separate subset and must not be added to Delivered; a confirmed Read without separate Delivered still proves delivery.
-- The code uses automatic campaign discovery, a bounded rotating scan, and a bounded failed-recipient breakdown. **Partial scans and unavailable provider analytics must not be described as complete reporting for every historical campaign.**
-- AGE 07 does **not** synchronize individual provider delivery events into EspoCRM: the entitled campaign analytics API does not expose verified Meta message IDs/timestamps and AGE attempt linkage required by its event endpoint.
+- AGE 07 now reads the three Chatwoot tables `campaigns`, `campaign_recipients`, and `inboxes` via SELECT-only SQL scoped to account 2 and native one-off WhatsApp inbox campaigns. **Delivered includes Read** (status 3 or 4), without double-counting.
+- The database query summarizes up to **201** campaigns, with per-campaign error-code breakdown and ID/timestamp coverage; at the limit it reports PARTIAL, not complete. Error/permission responses produce BLOCKED, never fabricated zeroes. No mobile numbers or message contents are exported.
+- AGE 07 is **currently read-only and does not write to n8n Data Tables or EspoCRM**. Even though the DB contains Meta-format IDs/timestamps, the exact AGE campaign/recipient/attempt mapping and provider provenance are not yet established. Provider event history and idempotent incremental sync remain future work.
 - n8n queue-mode Data Tables are fine for compact operational state; their row upserts do **not** constitute guaranteed atomic sending reservations.
-- No custom PostgreSQL schema is required for this current read-only import; no native Chatwoot source modifications are made.
+- No custom PostgreSQL schema is required; **four** existing Chatwoot tables are NOT read: only `campaigns`, `campaign_recipients`, and `inboxes` are accessed. `contacts` is not queried in the aggregate workflow. Chatwoot source is unchanged. Database access does not itself grant Enterprise license entitlement.
 
 ## Manual checklist
 
 1. Verify Data Tables exist with correct column names/types; if created using demo CSVs, delete sample rows but retain the tables.
 2. Import only the two **USE NOW** workflow JSON files. Optional setup must run first *only when tables are missing*.
-3. Bind your existing credentials using n8n. Run both workflows manually and read all HOLD/BLOCKED reasons.
-4. If Chatwoot analytics is not enabled or the list/metric calls fail, keep AGE 07 inactive and retain the unified diagnostic.
-5. Enable schedules only after their manual executions pass. Do not enable earlier copies already imported to n8n; GitHub name changes don't update installed workflow titles automatically.
+3. For AGE 07, use the **separate Chatwoot PostgreSQL database**, not n8n's app DB: create a dedicated `age_chatwoot_analytics_ro` role. Grant only CONNECT on database `chatwoot`, USAGE on `public`, and SELECT on `public.campaigns`, `public.campaign_recipients`, `public.inboxes`. Never embed DB credentials or expose port 5432 publicly.
+4. Verify the Chatwoot edition/license permits this use before executing the data reader in production. Bind the PostgreSQL credential to AGE 07 and run it **manually in an authorized pilot**; expected historic campaign-2 snapshot as verified on 24 Oct: audience 910, delivered-inclusive 660, Read 505, failed 247, sent-only 3. This is a snapshot that may change.
+5. Check `status`, `reports[].reasons`, `scanComplete`, `crmEventWrites:0`, `dataTableWrites:0`. Permission/schema errors show BLOCKED; zero recipient rows show PARTIAL; reaching 201 reports PARTIAL.
+6. Enable schedules only after the manual tests, database security, entitlement review and operational sign-off; keep earlier imported AGE 07 versions disabled. The unified monitor is independent. Do not enable earlier copies already imported to n8n; GitHub name changes don't update installed workflow titles automatically.
 6. Treat read-only testing and import-CI success as separate from a live sender or persistent provider→EspoCRM reconciliation.
 
 See [the source-verified 24-Oct reconciliation handoff](RECONCILIATION_WORKFLOWS_2026-10-24.md) and [Meta status reconciliation acceptance criteria](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md).
+
+## Important field-level reference
+
+See [2026-10-24 verified Chatwoot database discovery](CHATWOOT_ANALYTICS_DISCOVERY_2026-10-24.md) for statuses, joins, timestamps, 131026/131049 errors and limitations. The workflow performs only an **aggregate read** and preserves the existing 22-file inventory; a later gated implementation must handle contact/attempt-level EspoCRM mapping and Data Table upserts if approved.
