@@ -1,5 +1,33 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Minimal persistent n8n-side Compose approach (prepared; NOT APPLIED)
+
+The operator requested the smallest lasting edit instead of a transient `docker network connect`.
+
+**Do not edit Chatwoot** and do not re-enable its shared predefined network. In **Coolify → n8n → Edit Compose File**, append **one entry** to the existing `networks:` lists of the *n8n main* and *n8n worker* Compose services:
+
+```yaml
+    networks:
+      # Keep every existing entry here, unchanged.
+      - chatwoot_private
+```
+
+At the **existing root-level** `networks:` section (create it only if none exists), register the already-existing Chatwoot network:
+
+```yaml
+networks:
+  chatwoot_private:
+    external: true
+    name: au4akmkdy3bkd76n7m0ay0ky
+```
+
+**These snippets are amendments, not a complete replacement Compose file.** Docker Compose overwrites implicit network behavior when a service's `networks:` is specified, so retain its current `default`/Coolify/resource networks, service dependencies and credentials verbatim. Actual Compose service keys may differ from container names; inspect the current saved Compose before editing. Coolify saves Compose configuration for future redeploys, while manual `docker network connect` is lost when a container is replaced. Do not deploy before reviewing the generated Compose and relevant backups. On rollout, only the n8n stack may need re-creation, which temporarily interrupts n8n/worker execution; Chatwoot should remain untouched. Verify n8n queue worker, Redis, existing n8n Postgres, Chatwoot DB reachability, and AGE 07 afterward.
+
+**Limit of durability:** If Chatwoot's resource UUID/network is replaced (rather than merely restarted/upgraded), the external network name must be reviewed and updated. Compose will refuse to start services if its required external network does not exist. For a truly independent long-lived name, design a dedicated externally managed network and attach *both endpoints* in persistent Compose definitions; that is a larger controlled change.
+
+**Status: documented only; operator has not supplied n8n Compose file and no live Compose edit or redeployment was performed.**
+
+
 ## Post-recovery AGE 07 execution — 24 October 2026, approximately 19:37 IST
 
 **Verified from operator's n8n screenshot after Chatwoot service recovered:** Existing workflow `[USE NOW - READ ONLY] AGE 07 - Chatwoot PostgreSQL Campaign Delivery/Read Analytics` shows green execution success. The Chatwoot PostgreSQL query node completed and emitted **2 items**; the validation Code node completed and emitted **1 item**. The UI toast states **"Workflow executed successfully."** This proves post-restart SQL query execution and successful validation-node completion using the existing Chatwoot private network.
