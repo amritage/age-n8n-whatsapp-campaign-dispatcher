@@ -1,5 +1,8 @@
 # Current n8n import guide — 2 monitors + optional setup
 
+> **Development exception (24 Oct):** The former AGE 03 advanced SQL file has been **reused** as [AGE 03 manual recipient-evidence inspector](../workflows/age-03-chatwoot-evidence-readonly.json). It is **not a production third/fourth scheduled workflow**: inactive, manual-only, private recipient data, read-only, and no EspoCRM/Data Table writes. See [AGE 03 paging and mapping guide](RECIPIENT_EVIDENCE_PAGING_AND_MATCHING_2026-10-24.md). AGE 07 still owns aggregate reporting. Do not enable AGE 03 on any schedule.
+
+
 **Updated 24 October 2026** · Installed n8n now observed at 2.44.6 queue mode · Chatwoot v4.19.0 · EspoCRM.  
 **This replaces the older 3-workflow / 7-workflow recommendations.** The current authority is [the 22-workflow inventory](../workflows/README.md). No existing deployed n8n workflows are changed by GitHub edits.
 
@@ -16,7 +19,7 @@
 
 **AGE 08** [provider evidence reducer](../workflows/age-08-verified-message-evidence-reducer.json) is **NOT an active fourth workflow**. It has no verified event collector, no durable cross-run ledger and no authenticated mapping to AGE attempts. It is developer-only.
 
-**Do NOT additionally import** AGE 00 (earlier daily analytics), AGE 01–06 modular variants, earlier recipient reports, old API readiness variants, PostgreSQL-based workflows, or the old sending/reconciliation **design shells**. They all remain in GitHub for history. Their in-JSON names now begin with `[OLD]`, `[LEGACY SQL]`, `[ADVANCED SQL]` or `[DESIGN SHELL]`.
+**Do NOT additionally import for live scheduling** AGE 00 (earlier daily analytics), AGE 01–06 modular variants, earlier recipient reports, old API readiness variants, PostgreSQL-based workflows, or the old sending/reconciliation **design shells**. They all remain in GitHub for history. Their in-JSON names now begin with `[OLD]`, `[LEGACY SQL]`, `[ADVANCED SQL]` or `[DESIGN SHELL]`.
 
 ## Expected safety behavior
 
