@@ -2,6 +2,12 @@
 
 Do not assume endpoint names in this document exist in the installed AGE Campaign Management extension. They are **proposed adapter operations**; implement or map them only after inspecting the installed extension/API. Prefer existing APIs where they satisfy the transactional guarantees. A normal GET followed by POST is not an atomic sender-wide claim.
 
+## Cross-platform outcome reconciliation acceptance (24 October 2026)
+
+The [approved delivery and analytics requirement](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md) is **mandatory** for implementation of ingestRecipientOutcome and analytics rollups. Treat a confirmed **Read** of a validated Meta message as proof that message was **Delivered**. Count delivered-inclusive as the **union** of distinct Delivered and Read messages; Read is not added as another delivery. Preserve Read when a delayed Delivered arrives. Support status deduplication, out-of-order delivery, provider error codes, source evidence and independently verified mapping to EspoCRM campaign/recipient/attempt IDs. Missing Read is UNKNOWN rather than confirmed unread; do not add a paid dependency solely for Read.
+
+An accepted Chatwoot native campaign POST is **not** automatically a Submitted or Delivered message event; observe the deployed AGE extension's validation rules for /AGECampaign/attempt and /AGECampaign/event and never fake wamid/timestamps. Recipient statuses may be reconciled from existing provider webhooks, entitled analytics or authorized read-only evidence, with a documented fallback on endpoint denial.
+
 ## APIs/operations n8n needs
 | Logical adapter operation | Input | Output / invariant |
 |---|---|---|
