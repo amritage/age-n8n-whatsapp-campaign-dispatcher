@@ -1,5 +1,30 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Post-change application validation — 24 October 2026, ~20:26–20:27 IST
+
+**Evidence provided:** Two screenshots after the operator's n8n Compose networking edits/review.
+
+- Coolify 4.5.0 resource **n8n-with-postgres-and-worker** displays main **N8N** (`n8nio/n8n:2.44.6`) as `Running (healthy)`; **N8N Worker** (`2.44.6`) as `Running (healthy)`; **Task Runners** as `Running (healthy)`; **Postgresql**, **Redis**, and **Sandbox API** as `Running (healthy)`. **Sandbox Certs** is shown `Exited` (its source Compose specifies `restart: 'no'` and the job generates certificates; its exit code was *not* checked). **Sandbox Runner 1** and **Searxng** show `Running (unknown)` (not independently health-verified).
+- Coolify resource header displays `Running (no healthcheck)`, distinct from the per-container results above.
+- In the accessible n8n editor, **AGE 07** executes successfully: Postgres query node has a green check and emits **2 items**, and the Code analytics validator has a green check and emits **1 item**. This reconfirms application availability, Chatwoot DB connectivity, read-only SQL execution, and validator completion after the configuration work.
+- Screenshot **does not** display the current detailed AGE 07 JSON counts, active/published schedule state, or network `docker inspect` output. Previously verified counts remain historical reference and should not be restated as this screenshot's fresh figures.
+
+**Status:** Functional network and n8n application **verified after the operator's configuration changes**. Exact persistence across a future **n8n container recreation** is **not yet demonstrated**; prior manual network connects might also account for current reachability. Do not label this fully persistent until saved Compose + actual Docker networks are verified after a supervised redeploy. Do **not** restart Chatwoot.
+
+**Last lightweight host verification before closing networking milestone** (read-only):
+
+```bash
+docker inspect --format '{{.Name}}: {{range $network, $cfg := .NetworkSettings.Networks}}{{$network}} {{end}}' \
+  n8n-l11w6qi16cakcn9f855wbbk1 \
+  n8n-worker-l11w6qi16cakcn9f855wbbk1
+```
+
+Expected both: `l11w6qi16cakcn9f855wbbk1` and `au4akmkdy3bkd76n7m0ay0ky`; extra `coolify` remains possible/normal. This command proves **current** membership only; verified Coolify saved Compose is the configuration-of-record for future redeploys. If status remains stable, avoid another immediate production redeploy just to force a persistence test.
+
+**Next product milestone:** Build a tested, inactive recipient-level SQL extraction/reconciliation design with campaign/attempt identity verification and write safeguards; AGE 07 already supplies correct campaign aggregate snapshots. Full EspoCRM automatic updates are not yet active.
+
+
+
 ## Final generated Compose preview audit — 24 October 2026, ~20:20 IST (NOT DEPLOYED)
 
 The operator supplied the **Coolify-generated 580-line Deployable Compose**. A local YAML parse succeeded. It is structurally valid YAML, with n8n v2.44.6, queue worker, n8n DB, Redis, sandbox services, and all original named volume references preserved in the preview. The original n8n hostname/proxy points at the resource UUID network. There is **one redundant logical-network mapping that should be simplified before a production redeploy**.
