@@ -1,5 +1,24 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Recovery update — 24 October 2026 (operator reports healthy)
+
+**Operator report:** Chatwoot was restarted and all components are healthy again. This is sufficient to mark the operational service incident **recovered per operator**, but not the underlying DNS/network design or root-cause question as solved.
+
+**Not independently verified:** whether Coolify's Network attachment setting was reverted; current network membership; Sidekiq post-restart counter; Chatwoot public website; worker database connectivity; credential test and AGE 07 execution after restart. Do not assume the operator reverted the network setting.
+
+**Immediate next step (read-only VPS diagnostics):**
+
+```bash
+docker ps --filter name=au4akmkdy3bkd76n7m0ay0ky --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}'
+docker inspect --format '{{.Name}}: {{range $name, $net := .NetworkSettings.Networks}}{{$name}} {{end}}' postgres-au4akmkdy3bkd76n7m0ay0ky sidekiq-au4akmkdy3bkd76n7m0ay0ky n8n-l11w6qi16cakcn9f855wbbk1 n8n-worker-l11w6qi16cakcn9f855wbbk1
+docker inspect sidekiq-au4akmkdy3bkd76n7m0ay0ky --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} Restarts={{.RestartCount}}'
+```
+
+Then check the public Chatwoot website, retest the previously working n8n Chatwoot Postgres credential, and manually execute inactive AGE 07 if the database is reachable and the use is authorized. If all tests pass, **avoid another Chatwoot restart just to reconfigure networking**.
+
+If the credential fails after restart, do not simply connect the whole Chatwoot stack to the shared Coolify network again. Restore the limited private path first: attach only n8n main and n8n worker to Chatwoot's resource-specific Docker network for a reversible connectivity test. Design a **persistent** dedicated network attachment through reviewed Coolify Compose only in an approved maintenance window with known-good backup. Manual docker network connect does not preserve the attachment on container replacement.
+
+Root cause of the earlier Sidekiq crash was not determined. Working application health does not prove the previous networking choice caused it.
 ## URGENT incident — 24 October 2026, approximately 19:22 IST (OPEN)
 
 **Operator screenshot after changing Coolify Service → General → Network attachment to "Connect to the predefined Coolify network":** Coolify overall service shows **Degraded**; Chatwoot, PostgreSQL and Redis show **Running (healthy)**; **Sidekiq shows "Restarting (unknown)"**. The operator's browser also contains a "Site not available" tab, but whether that domain is specifically Chatwoot and the exact error are not independently verified. **This may represent a production background-worker outage. Prioritize recovery over AGE 07 expansion.** The changed network setting and restart happened close together, but **causality has not yet been proven**.
