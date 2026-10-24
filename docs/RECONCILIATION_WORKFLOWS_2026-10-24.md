@@ -6,7 +6,7 @@
 
 ## What can actually be imported and tested now
 
-1. **[AGE 07 — Chatwoot WhatsApp Analytics Reconciliation](../workflows/age-07-delivery-read-analytics-native.json)** — Native Chatwoot community-node GET campaign inventory, GET campaign metrics and GET **failed** recipients. Auto-discovers WhatsApp one-off campaigns without manual IDs; processes up to five campaigns per run; handles feature-gated analytics as BLOCKED; validates the v4.19.0 delivered-includes-read contract; produces failure counts by exact Meta error code and an explicit unmatched/CRM-not-verified result. Manual Trigger or every-six-hour schedule, inactive by default.
+1. **[AGE 07 — Chatwoot WhatsApp Analytics Reconciliation](../workflows/age-07-delivery-read-analytics-native.json)** — Native Chatwoot community-node GET campaign inventory, GET campaign metrics and GET **failed** recipients (bounded to 501 rows per selected campaign; above 500 a report is explicitly BLOCKED as incomplete). Auto-discovers WhatsApp one-off campaigns without manual IDs; processes up to five campaigns per run; handles feature-gated analytics as BLOCKED; validates the v4.19.0 delivered-includes-read contract; produces failure counts by exact Meta error code and an explicit unmatched/CRM-not-verified result. Manual Trigger or every-six-hour schedule, inactive by default.
 2. **[AGE 08 — Verified Message Evidence Reducer](../workflows/age-08-verified-message-evidence-reducer.json)** — callable n8n subworkflow using the built-in Execute Workflow Trigger v1.2. Caller must supply **independently verified** per-message provider records with actual wamid, status, provider event timestamp, account/inbox and trusted-source validation. Outputs canonical read/delivered/failed evidence and duplicate/conflict statistics **for that input batch only**. There is **no** webhook, database write, EspoCRM POST, message send or persisted cross-execution idempotency. Never expose as a public unauthenticated endpoint.
 3. The existing **[six-hour unified health monitor](../workflows/age-unified-six-hour-health-readonly.json)** is still the combined account/CRM/portfolio HOLD-only check. Importing AGE 07 is optional until Chatwoot analytics permissions are confirmed. The new AGE 07 is a **richer successor to the old daily capability probe and earlier recipient report**; do not activate both recurring analytics checks unnecessarily.
 
@@ -20,7 +20,7 @@
 - `read` = status read. **Do not add this to `delivered`**.
 - `failed` = failed recipients; `skipped` = skipped recipients.
 - `status_counts` includes queued / skipped / sent / delivered / read / failed.
-- API getRecipients can filter `status=failed` (25 records per provider page). Our installed community node v0.9.0 can paginate and supplies paired item identity.
+- API getRecipients can filter `status=failed` (25 records per provider page). Our installed community node v0.9.0 can paginate and supplies paired item identity. To avoid unexpectedly expensive scans, this workflow fetches **at most 501 failed recipients per campaign**; **more than 500 blocks full error-code reconciliation**, while aggregate Chatwoot metrics remain available.
 
 AGE 07 checks that:
 - `delivered >= read`; `delivered <= audience`; optional `status_counts.delivered + status_counts.read == delivered`.
