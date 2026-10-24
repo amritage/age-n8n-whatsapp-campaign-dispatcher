@@ -1,5 +1,47 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Coolify editor screenshot review — 24 October 2026, approximately 20:00 IST (UNSAVED YAML; correction required)
+
+Operator shared two screenshots of Coolify → n8n → Edit Compose File after entering `default` and `chatwoot_private` entries:
+
+- In the `n8n` service, newly entered `networks:` was indented under `healthcheck:` instead of being a sibling.
+- In `n8n-worker`, newly entered `networks:` was indented under `depends_on:` and appeared before `n8n`, `postgresql`, `redis`, splitting the dependency block.
+- Root-level `networks:` declaration and Coolify's generated Compose have **not** yet been shown/verified. No n8n redeploy or save was observed.
+
+**STOP: Do not save/redeploy the currently pictured YAML.** Even if parsed, nested keys are invalid for those Compose sections and may disrupt n8n.
+
+Correct `n8n` by placing these at the **same 4-space service-property level**:
+
+```yaml
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -qO- http://127.0.0.1:5678/healthz'
+      interval: 5s
+      timeout: 20s
+      retries: 10
+    networks:
+      - default
+      - chatwoot_private
+```
+
+Correct `n8n-worker` by placing the network at the **same 4-space service-property level**, after the COMPLETE depends_on block:
+
+```yaml
+    depends_on:
+      n8n:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - chatwoot_private
+```
+
+**Still required before saving:** inspect existing root-level networks and Preview Generated Compose. Only add the root `chatwoot_private` external network once, preserving existing mapping for `default` (must resolve to correct n8n internal network), UUID service network and `coolify` proxy. Existing service naming, Redis routing and persistent volumes must remain unchanged. The screenshots do not prove `default` maps to `l11w6qi16cakcn9f855wbbk1`, and the application stack could fail if that assumption is false. No commands or deployment authorized yet.
+
 ## Exact n8n Compose excerpt received — 24 October 2026 (pending bottom network declaration)
 
 The operator provided a partial n8n Compose source, confirming services `n8n` (upper excerpt ends at `healthcheck.retries:10`), `n8n-worker` (ends at its `depends_on`), `postgresql`, `redis`, `task-runners`, `sandbox-certs`, `sandbox-api`, `sandbox-runner-1`, and `searxng`. The `n8n`, `n8n-worker`, `postgresql`, and `redis` excerpts have **no explicit service-level `networks:`**; sandbox services explicitly reference `l11w6qi16cakcn9f855wbbk1`. The source excerpt **does not include the actual top-level `networks:` section or end-of-file**. No passwords were provided.
