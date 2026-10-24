@@ -22,7 +22,7 @@ const good={
  delivered_including_read:'660',provider_id_present:'910',wamid_format:'910',
  delivered_timestamps:'660',read_timestamps:'505',failure_timestamps:'247',
  coded_failures:'247',last_recipient_update:'2026-10-09T16:02:32',
- error_code_counts:{'131026':'90','131049':'157'}
+ error_code_counts:{'130472':'10','131026':'134','131049':'103'}
 };
 assert.equal(w.active,false);
 assert.equal(w.settings.saveDataSuccessExecution,'none');
@@ -51,7 +51,9 @@ assert.equal(result.reports[0].counts.readConfirmed,505);
 assert.equal(result.reports[0].counts.deliveredOnly,155);
 assert.equal(result.reports[0].counts.failed,247);
 assert.equal(result.reports[0].readPctOfDelivered,76.52);
-assert.equal(result.reports[0].errorCodeCounts['131049'],157);
+assert.equal(result.reports[0].errorCodeCounts['131049'],103);
+assert.equal(result.reports[0].errorCodeCounts['131026'],134);
+assert.equal(result.reports[0].errorCodeCounts['130472'],10);
 assert.equal(result.reports[0].mapping,'UNMATCHED');
 assert.equal(result.espocrmMappingVerified,false);
 assert.equal(result.crmEventWrites,0);
@@ -60,6 +62,25 @@ assert.equal(result.sends,0);
 assert.equal(result.licensePermissionVerified,false);
 assert(!JSON.stringify(result).includes('phone_number'));
 assert(!JSON.stringify(result).includes('message_content'));
+
+// Verified live snapshot shape: a valid populated campaign plus an empty campaign.
+const emptyCampaign={...good,internal_campaign_id:1,campaign_display_id:1,campaign_name:'Empty test campaign',
+ audience:'0',queued:'0',skipped:'0',sent_only:'0',delivered_only:'0',
+ read_confirmed:'0',failed:'0',delivered_including_read:'0',provider_id_present:'0',wamid_format:'0',
+ delivered_timestamps:'0',read_timestamps:'0',failure_timestamps:'0',coded_failures:'0',
+ last_recipient_update:null,error_code_counts:{}};
+const mixed=evaluate([row(good),row(emptyCampaign)]);
+assert.equal(mixed.reportCount,2);
+assert.equal(mixed.scanComplete,true);
+assert.equal(mixed.status,'PARTIAL'); // Empty second campaign is not a SQL error.
+assert.equal(mixed.reports[0].status,'SNAPSHOT_VALID');
+assert.deepEqual(Array.from(mixed.reports[0].reasons),[]);
+assert.equal(mixed.reports[1].status,'PARTIAL');
+assert(mixed.reports[1].reasons.includes('NO_RECIPIENT_EVIDENCE'));
+assert.equal(mixed.reports[0].counts.deliveredIncludingRead,660);
+assert.equal(mixed.reports[0].counts.readConfirmed,505);
+assert.equal(mixed.crmEventWrites,0);
+assert.equal(mixed.dataTableWrites,0);
 
 const error=evaluate([row({error:'permission denied for table campaigns'})]);
 assert.equal(error.status,'BLOCKED');
