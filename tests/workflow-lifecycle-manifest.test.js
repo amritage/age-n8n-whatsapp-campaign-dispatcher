@@ -38,10 +38,20 @@ for(const entry of manifest.workflows){
   assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'));
   assert(w.nodes.filter(n=>n.type==='n8n-nodes-base.dataTable').every(n=>n.parameters.operation==='create'));
  }
- if(entry.status==='DEV_ONLY')assert(w.nodes.some(n=>n.type==='n8n-nodes-base.executeWorkflowTrigger'));
+ if(entry.status==='DEV_ONLY'){
+  if(entry.file==='age-08-verified-message-evidence-reducer.json'){
+    assert(w.nodes.some(n=>n.type==='n8n-nodes-base.executeWorkflowTrigger'));
+  }else if(entry.file==='age-03-chatwoot-evidence-readonly.json'){
+    assert(w.nodes.some(n=>n.type==='n8n-nodes-base.manualTrigger'));
+    assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'),'Sensitive recipient inspector cannot schedule');
+    assert.equal(w.nodes.filter(n=>n.type==='n8n-nodes-base.postgres').length,1);
+    assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.httpRequest'||n.type==='n8n-nodes-base.dataTable'));
+    assert(w.nodes.find(n=>n.type==='n8n-nodes-base.postgres').parameters.query.includes('ct.phone_number'));
+  }else throw new Error('Unrecognized DEV_ONLY workflow: '+entry.file);
+ }
  count[entry.status]=(count[entry.status]||0)+1;
 }
-assert.equal(count.USE_NOW,2);assert.equal(count.OPTIONAL_SETUP,1);assert.equal(count.DEV_ONLY,1);
-assert.equal(files.length-count.USE_NOW-count.OPTIONAL_SETUP-count.DEV_ONLY,18);
+assert.equal(count.USE_NOW,2);assert.equal(count.OPTIONAL_SETUP,1);assert.equal(count.DEV_ONLY,2);
+assert.equal(files.length-count.USE_NOW-count.OPTIONAL_SETUP-count.DEV_ONLY,17);
 assert(fs.readFileSync(path.join(dir,'README.md'),'utf8').includes('22 workflow JSON files'));
-console.log('PASS: 22/22 workflows labeled, only 2 current read-only scheduled, optional setup, one dev reducer, 18 historic/alternative, all inactive');
+console.log('PASS: 22/22 workflows labeled, only 2 current read-only scheduled, optional setup, 2 development-only, 17 historic/alternative, all inactive');
