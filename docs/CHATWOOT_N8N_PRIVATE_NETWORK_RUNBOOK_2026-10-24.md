@@ -1,5 +1,21 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Post-restart verification — 24 October 2026 (operator-provided Docker output)
+
+**Verified after Chatwoot restart:** All four containers are `Up 4 minutes (healthy)` at the time of inspection: `chatwoot`, `sidekiq`, `postgres`, and `redis` under `au4akmkdy3bkd76n7m0ay0ky`. Chatwoot's stack is now **only** on its resource-specific network.
+
+| Container | Network memberships observed |
+| --- | --- |
+| `postgres-au4akmkdy3bkd76n7m0ay0ky` | `au4akmkdy3bkd76n7m0ay0ky` |
+| `sidekiq-au4akmkdy3bkd76n7m0ay0ky` | `au4akmkdy3bkd76n7m0ay0ky` |
+| `n8n-l11w6qi16cakcn9f855wbbk1` | `au4akmkdy3bkd76n7m0ay0ky`, `coolify`, `l11w6qi16cakcn9f855wbbk1` |
+| `n8n-worker-l11w6qi16cakcn9f855wbbk1` | `au4akmkdy3bkd76n7m0ay0ky`, `coolify`, `l11w6qi16cakcn9f855wbbk1` |
+
+**Outcome:** The earlier Sidekiq crash-loop is **resolved at the time of check**. The network now matches the narrowly scoped, successful test topology (Chatwoot stack remains isolated; main/worker n8n have an extra connection to Chatwoot's network). Neither a new credentials test nor an AGE 07 run after this restart has yet been provided. The above is network *membership*, not proof of each new SQL operation.
+
+**Remaining infrastructure task:** Audit how n8n's extra Chatwoot network connections were created and persist them via a supported Coolify-managed Compose/network configuration. Manually issued `docker network connect` commands normally survive a *container restart*, but NOT recreation/redeployment, so repeat the test after a future supervised n8n redeploy. Do not re-enable `Connect to the predefined Coolify network` on the Chatwoot stack; this broad connection correlated with its degraded period and is not required for functionality. No further Chatwoot restarts just to optimize n8n.
+
+**Next safe checks:** (1) n8n credential `Chatwoot Postgres` → Retry; (2) inactive AGE 07 → manual Execute; (3) verify per-campaign `SNAPSHOT_VALID`, no data/CRM writes; (4) review Coolify n8n Compose settings for persistent private-network attachment; (5) separately verify role's non-SELECT privileges and license terms before enabling any schedule. Do not enable a second AGE 07 or send workflow.
 ## Recovery update — 24 October 2026 (operator reports healthy)
 
 **Operator report:** Chatwoot was restarted and all components are healthy again. This is sufficient to mark the operational service incident **recovered per operator**, but not the underlying DNS/network design or root-cause question as solved.
