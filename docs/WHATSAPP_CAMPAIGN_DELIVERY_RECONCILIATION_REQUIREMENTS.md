@@ -7,6 +7,16 @@
 >
 > For all WhatsApp campaigns sent via Chatwoot using Meta WhatsApp Business API, reliably track and reconcile delivery, failure, Meta error codes, and all other critical campaign analytics in n8n and EspoCRM; collect Read status wherever available without additional complexity or cost, and treat a confirmed Read as proof of delivery without double-counting.
 
+## Implementation status — 24 October 2026
+
+The first two importable components are now available:
+
+- [AGE 07 — native Chatwoot v4.19 delivery/Read analytics](../workflows/age-07-delivery-read-analytics-native.json): genuine, read-only account campaign discovery, aggregate source-backed Delivered-inclusive-of-Read, Read and Meta failure-code retrieval; no manual campaign IDs.
+- [AGE 08 — provider message evidence reducer](../workflows/age-08-verified-message-evidence-reducer.json): reusable internal n8n subworkflow for authenticated-upstream canonical message evidence; Read implies delivery, duplicates suppressed **within the input execution** and contradictory failures flagged.
+- [Source contract and deployment limitations](RECONCILIATION_WORKFLOWS_2026-10-24.md): why analytics permissions, real Meta wamid/provider timestamps and verified AGE attempt mapping are prerequisites for persistent cross-execution reconciliation and EspoCRM event writes.
+
+**Outstanding:** These components are not yet a fully integrated end-to-end EspoCRM delivery reconciler. The current reports do not write to EspoCRM or create a durable provider status ledger. Continue to report UNMATCHED/BLOCKED rather than fabricate identities or counts.
+
 ## 1. Mandatory outcomes
 
 - Automatically discover relevant Chatwoot native WhatsApp campaigns and reconcile them against the authoritative EspoCRM campaign and recipient records. No manual campaign ID entry on every run. A Chatwoot campaign with no **verified** EspoCRM batch mapping stays UNMATCHED; never join solely by name or unverified phone.
