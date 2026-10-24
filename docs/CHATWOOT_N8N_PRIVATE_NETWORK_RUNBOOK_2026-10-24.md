@@ -1,5 +1,26 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## URGENT incident — 24 October 2026, approximately 19:22 IST (OPEN)
+
+**Operator screenshot after changing Coolify Service → General → Network attachment to "Connect to the predefined Coolify network":** Coolify overall service shows **Degraded**; Chatwoot, PostgreSQL and Redis show **Running (healthy)**; **Sidekiq shows "Restarting (unknown)"**. The operator's browser also contains a "Site not available" tab, but whether that domain is specifically Chatwoot and the exact error are not independently verified. **This may represent a production background-worker outage. Prioritize recovery over AGE 07 expansion.** The changed network setting and restart happened close together, but **causality has not yet been proven**.
+
+**Immediate safe incident triage from VPS host (no container changes):**
+
+```sh
+docker ps -a --filter name=au4akmkdy3bkd76n7m0ay0ky --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}'
+docker inspect sidekiq-au4akmkdy3bkd76n7m0ay0ky --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} RestartCount={{.RestartCount}} Error={{.State.Error}}'
+docker logs --tail 100 --timestamps sidekiq-au4akmkdy3bkd76n7m0ay0ky
+docker logs --tail 60 --timestamps chatwoot-au4akmkdy3bkd76n7m0ay0ky
+docker logs --tail 60 --timestamps coolify-proxy
+```
+
+Do not publish secrets or full environment variables if accidentally logged. Look for first Sidekiq failure (Redis/DNS/auth, PostgreSQL/DNS/auth, process error or changed Compose). Check if the Chatwoot public URL works separately from the worker; a healthy Chatwoot web container and failed worker can coexist, while a public "No available server" error points to Traefik routing/health/domain issues. [Coolify troubleshooting](https://coolify.io/docs/services/operations/troubleshooting) says to collect logs and check the *first* error rather than restarting repeatedly.
+
+**Conditional rollback when justified:** If failure began with the network change and logs do not reveal an unrelated cause, prefer reverting the **saved Network attachment** setting to **Use the stack network only** and using **Restart current version** (no image pulls) during supervised incident recovery. Preserve the Chatwoot PostgreSQL named volumes and existing Compose environment; do **not** delete/replace database, remove volumes or change images. This rollback may temporarily remove n8n's Chatwoot DB connection; that is acceptable because production Chatwoot availability is higher priority. If the original stack setting already restores service health without a restart, do not provoke another interruption. Document actual remedy and post-recovery Sidekiq/Chatwoot/Redis/PG health, public domain and n8n connection state.
+
+**Not yet verified:** Sidekiq log cause, public-site error, saved-Compose changes, and recovery. This note must not be marked resolved until the operator supplies evidence.
+
+
 **LATEST VERIFIED MILESTONE — 24 Oct 2026:** A successful manual AGE 07 workflow execution is confirmed; campaign 2 is `SNAPSHOT_VALID` and the overall `PARTIAL` reflects empty campaign 1. See the live first-run acceptance record below. Private connectivity currently works, but persistence across a Coolify redeploy and explicit denial of DB write permissions remain unverified.
 
 
