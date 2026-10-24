@@ -3,6 +3,9 @@
 **Updated 24 October 2026** · Installed n8n now observed at 2.44.6 queue mode · Chatwoot v4.19.0 · EspoCRM.  
 **This replaces the older 3-workflow / 7-workflow recommendations.** The current authority is [the 22-workflow inventory](../workflows/README.md). No existing deployed n8n workflows are changed by GitHub edits.
 
+> **Live pilot outcome — 24 Oct 2026:** AGE 07 has **already passed a real manual execution** in n8n 2.44.6. Display campaign 2 is `SNAPSHOT_VALID` with 910 audience / 660 delivered (505 read) / 247 failed. A separate zero-row test campaign correctly makes the **overall** status `PARTIAL`. `scanComplete=true`; SQL and credentials are working. **Do not repeatedly import duplicate workflow copies.** The remaining steps are the DB write-privilege audit, durable private network configuration, licensing review, and any separately approved scheduled operation or data storage. Full evidence: [operator log](CHATWOOT_N8N_PRIVATE_NETWORK_RUNBOOK_2026-10-24.md).
+
+
 ## Exactly what to import
 
 | Order | File | How to operate |
