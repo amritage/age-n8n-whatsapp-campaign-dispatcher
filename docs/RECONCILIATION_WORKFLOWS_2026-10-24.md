@@ -1,5 +1,8 @@
 # Delivery / Read reconciliation workflow handoff (24 October 2026)
 
+> **IMPORTANT — 24 October 2026 source change:** This handoff's AGE 07 native campaign `getMetrics/getRecipients` description and associated tests refer to its **superseded Enterprise-API implementation**. The current file `workflows/age-07-delivery-read-analytics-native.json` was subsequently **replaced** by an inactive, SELECT-only PostgreSQL summary (account 2; `campaigns` + `campaign_recipients` + `inboxes`). It does NOT call paid analytics endpoints, collect mobile-level rows, persist Data Tables, or write EspoCRM. Follow [the current installation guide](SIMPLIFIED_THREE_WORKFLOW_DEPLOYMENT.md) and [field-level verification](CHATWOOT_ANALYTICS_DISCOVERY_2026-10-24.md). SQL-path usage requires database permissions and licensing review. Historical sections below are retained for context only.
+
+
 **Stack:** Chatwoot v4.19.0; n8n 2.37.9 queue mode; EspoCRM + AGE Campaign Management.  
 **Status:** WORKING SOURCE-CONTRACT IMPLEMENTATION FOR SAFE DIAGNOSTICS, NOT YET AN END-TO-END LIVE ESPoCRM RECONCILER.  
 **Safety:** All workflow JSON files import inactive, no production sends, no Chatwoot/EspoCRM writes, no credential values.
