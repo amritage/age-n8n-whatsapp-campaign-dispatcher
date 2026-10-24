@@ -64,6 +64,8 @@ jobs:
         run: node tests/delivery-evidence-core.test.js
       - name: Verify native Chatwoot delivery/Read and failure-code analytics reconciliation
         run: node tests/native-delivery-analytics.test.js
+      - name: Test n8n provider evidence reducer subworkflow (no writes)
+        run: node tests/delivery-evidence-subworkflow.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |
