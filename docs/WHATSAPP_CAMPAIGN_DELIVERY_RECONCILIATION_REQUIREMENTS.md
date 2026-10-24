@@ -11,9 +11,9 @@
 
 The first two importable components are now available:
 
-- [AGE 07 — native Chatwoot v4.19 delivery/Read analytics](../workflows/age-07-delivery-read-analytics-native.json): genuine, read-only account campaign discovery, aggregate source-backed Delivered-inclusive-of-Read, Read and Meta failure-code retrieval; no manual campaign IDs.
+- [AGE 07 — Chatwoot PostgreSQL Read-only Delivered/Read analytics](../workflows/age-07-delivery-read-analytics-native.json): updated 24 October to replace the 401-blocked Enterprise analytics API with account-2-scoped SELECT-only campaign-recipient rollups; includes delivered/read/error counts and coverage validation, but requires separate authorization, least-privilege DB credentials and live manual verification. No per-recipient CRM or Data Table write.
 - [AGE 08 — provider message evidence reducer](../workflows/age-08-verified-message-evidence-reducer.json): reusable internal n8n subworkflow for authenticated-upstream canonical message evidence; Read implies delivery, duplicates suppressed **within the input execution** and contradictory failures flagged.
-- [Source contract and deployment limitations](RECONCILIATION_WORKFLOWS_2026-10-24.md): why analytics permissions, real Meta wamid/provider timestamps and verified AGE attempt mapping are prerequisites for persistent cross-execution reconciliation and EspoCRM event writes.
+- [Verified database field contract and integration gates](CHATWOOT_ANALYTICS_DISCOVERY_2026-10-24.md): the live observed campaign-recipient fields, Read and timestamps, current AGE 07 query and the still-missing exact AGE attempt mapping, event source validation, licensing and permitted persistence.
 
 **Outstanding:** These components are not yet a fully integrated end-to-end EspoCRM delivery reconciler. The current reports do not write to EspoCRM or create a durable provider status ledger. Continue to report UNMATCHED/BLOCKED rather than fabricate identities or counts.
 
