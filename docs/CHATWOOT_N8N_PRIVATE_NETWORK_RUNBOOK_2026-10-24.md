@@ -1,5 +1,23 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Review of proposed 3-spot n8n Compose edit — 24 October 2026 (NOT APPROVED FOR DEPLOYMENT)
+
+An external proposal correctly identifies that adding service-level `networks:` to `n8n` and `n8n-worker` replaces the implicit Compose default network. It suggests listing `l11w6qi16cakcn9f855wbbk1` and `chatwoot_private`, and declaring both as `external: true`.
+
+**Verdict: conceptually sound, but do not paste the proposal as an approved exact diff.** Issues to check in the *real saved source and Show Deployable Compose* before deploying:
+
+1. The existing source may use an implicit `default` Compose network; the existing resource-specific physical network is `l11w6qi16cakcn9f855wbbk1`. These are **not necessarily the same Compose key**, even if Docker inspection shows the physical network. Confirm the generated Compose mapping; `networks: [default, chatwoot_private]` preserves implicit default **only if** Coolify's generated `default` maps to the correct resource network.
+2. Operator's real `docker inspect` showed **three** networks on n8n main and worker: `l11w6qi16cakcn9f855wbbk1`, `coolify`, and `au4akmkdy3bkd76n7m0ay0ky`. The proposal names only **two**. Preserve the required `coolify` network (usually Coolify/predefined/proxy related) either via Coolify's managed deployment behavior **or explicitly in Compose if that behavior would be lost**; otherwise n8n's public reverse-proxy reachability may break.
+3. Only declare the resource-specific `l11w6qi16cakcn9f855wbbk1` `external: true` if its lifecycle and existing generated Compose say that is correct. `external: true` means Compose must find that network and will **not** create it. Replacing a pre-existing network definition without verifying this can cause deployment failure.
+4. Adding both n8n services to Chatwoot's network exposes them to **two different Redis services named `redis`**. Docker documents that shared/duplicate network aliases are not guaranteed to resolve to a particular container. Because n8n runs queue mode, confirm its main/worker Redis dependency resolution continues pointing at **n8n's own Redis**, not Chatwoot's. Prefer a future strictly scoped DB-only network if needed; that requires planned endpoint changes and should not be done during an incident.
+5. Check that the actual Compose **service keys** are `n8n` and `n8n-worker`; do not infer from container names. Avoid duplicate service-level or root-level `networks:` keys. Proposed line numbers 50/171/218 are not guarantees.
+6. Coolify's saved editor and **Show Deployable Compose** may differ; verify resulting network mappings and absence of destructive changes before any controlled n8n redeploy. There is a previously reported Coolify Compose service bug (#11371) where network changes were stripped. Do not assume the UI acceptance means the generated Compose contains them.
+
+**Safe next step: inspection only (no network change or restart):** share sanitized snippets of the existing n8n Compose `services:` keys and root/service `networks:`, plus generated `Show Deployable Compose` network blocks (no env vars, secrets or credentials). Then choose a tiny exact patch that explicitly retains n8n's Redis/Postgres/core network and required public proxy connectivity, while adding Chatwoot-only DB reachability. Validate Compose syntax and eventual n8n main/worker tests before marking persistent.
+
+Sources: [Docker Compose services networks](https://docs.docker.com/reference/compose-file/services/#networks), [Docker Compose existing external networks](https://docs.docker.com/compose/how-tos/networking/#use-an-existing-network), [Coolify Service networking](https://coolify.io/docs/services/configuration/networking), [Coolify generated network caveat #11371](https://github.com/coollabsio/coolify/issues/11371).
+
+
 ## Minimal persistent n8n-side Compose approach (prepared; NOT APPLIED)
 
 The operator requested the smallest lasting edit instead of a transient `docker network connect`.
