@@ -35,7 +35,7 @@ Then check the public Chatwoot website, retest the previously working n8n Chatwo
 If the credential fails after restart, do not simply connect the whole Chatwoot stack to the shared Coolify network again. Restore the limited private path first: attach only n8n main and n8n worker to Chatwoot's resource-specific Docker network for a reversible connectivity test. Design a **persistent** dedicated network attachment through reviewed Coolify Compose only in an approved maintenance window with known-good backup. Manual docker network connect does not preserve the attachment on container replacement.
 
 Root cause of the earlier Sidekiq crash was not determined. Working application health does not prove the previous networking choice caused it.
-## URGENT incident — 24 October 2026, approximately 19:22 IST (OPEN)
+## Historical production incident — 24 October 2026, approximately 19:22 IST (RECOVERED; cause undetermined)
 
 **Operator screenshot after changing Coolify Service → General → Network attachment to "Connect to the predefined Coolify network":** Coolify overall service shows **Degraded**; Chatwoot, PostgreSQL and Redis show **Running (healthy)**; **Sidekiq shows "Restarting (unknown)"**. The operator's browser also contains a "Site not available" tab, but whether that domain is specifically Chatwoot and the exact error are not independently verified. **This may represent a production background-worker outage. Prioritize recovery over AGE 07 expansion.** The changed network setting and restart happened close together, but **causality has not yet been proven**.
 
@@ -70,7 +70,7 @@ docker inspect sidekiq-au4akmkdy3bkd76n7m0ay0ky --format 'Status={{.State.Status
 docker logs --tail 200 --timestamps sidekiq-au4akmkdy3bkd76n7m0ay0ky 2>&1 | sed -n '1,85p'
 ```
 
-The final command deliberately **does not filter by error keywords** and is intended to capture the first visible exception, which may be outside the previous `tail 300` or not matched by the grep. Sanitize credentials and customer data before sharing. **Status: OPEN; no recovery verified yet.**
+The final command deliberately **does not filter by error keywords** and is intended to capture the first visible exception, which may be outside the previous `tail 300` or not matched by the grep. Sanitize credentials and customer data before sharing. **Historical note: this was OPEN at the time; later Docker inspection confirms all four Chatwoot containers healthy after restart. Root cause remains unproven.**
 
 **Immediate safe incident triage from VPS host (no container changes):**
 
