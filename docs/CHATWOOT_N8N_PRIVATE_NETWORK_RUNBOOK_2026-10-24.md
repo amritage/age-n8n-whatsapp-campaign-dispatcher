@@ -1,5 +1,33 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Exact n8n Compose excerpt received — 24 October 2026 (pending bottom network declaration)
+
+The operator provided a partial n8n Compose source, confirming services `n8n` (upper excerpt ends at `healthcheck.retries:10`), `n8n-worker` (ends at its `depends_on`), `postgresql`, `redis`, `task-runners`, `sandbox-certs`, `sandbox-api`, `sandbox-runner-1`, and `searxng`. The `n8n`, `n8n-worker`, `postgresql`, and `redis` excerpts have **no explicit service-level `networks:`**; sandbox services explicitly reference `l11w6qi16cakcn9f855wbbk1`. The source excerpt **does not include the actual top-level `networks:` section or end-of-file**. No passwords were provided.
+
+**Most conservative candidate** (not yet approved to deploy): under `services.n8n` and `services.n8n-worker`, add:
+
+```yaml
+    networks:
+      - default
+      - chatwoot_private
+```
+
+This explicitly retains the n8n Compose **implicit default** network that also connects its `postgresql`, `redis`, and `task-runners` services, while adding Chatwoot's private network. Root-level: add `chatwoot_private` to the existing `networks:` map (or create one if absent), without changing existing `default` or resource-specific entries:
+
+```yaml
+networks:
+  chatwoot_private:
+    external: true
+    name: au4akmkdy3bkd76n7m0ay0ky
+```
+
+**Critical prerequisites before save/deploy:** inspect the **full existing root-level networks** and Coolify **Show Deployable Compose**. The `default` logical network in generated Compose must correspond to the existing shared n8n service network `l11w6qi16cakcn9f855wbbk1`; if not, do not deploy this candidate. Do **not** blindly redefine the existing Coolify UUID network as `external: true`: ownership/creation semantics may differ. Avoid duplicate `networks:` YAML keys and accidentally detaching n8n from `coolify` proxy routing. The worker has `QUEUE_BULL_REDIS_HOST=redis-l11w6qi16cakcn9f855wbbk1`, a reassuring explicitly unique hostname; inspect n8n main's Redis setting too, as Chatwoot also has Redis and unqualified `redis` aliases could conflict on the common network.
+
+**Only after Compose review and backups:** validate YAML/Compose generated config, apply during n8n-specific maintenance window (n8n may restart, **Chatwoot must not**), then verify n8n main, worker, runners, own Postgres/Redis, proxy URL, private Chatwoot DB credential, and manual AGE 07. No production change has yet been applied by the assistant.
+
+Sources: [Docker Compose default networking](https://docs.docker.com/reference/compose-file/networks/#the-default-network); [Docker Compose external network](https://docs.docker.com/compose/how-tos/networking/#use-an-existing-network); [Coolify source vs generated Compose](https://coolify.io/docs/services/configuration/docker-compose).
+
+
 ## Review of proposed 3-spot n8n Compose edit — 24 October 2026 (NOT APPROVED FOR DEPLOYMENT)
 
 An external proposal correctly identifies that adding service-level `networks:` to `n8n` and `n8n-worker` replaces the implicit Compose default network. It suggests listing `l11w6qi16cakcn9f855wbbk1` and `chatwoot_private`, and declaring both as `external: true`.
