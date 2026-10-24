@@ -22,11 +22,11 @@ for(const entry of manifest.workflows){
     const n=pg[0];const sql=n.parameters.query;
     assert.equal(n.parameters.operation,'executeQuery');
     assert.equal(n.continueOnFail,true);
-    assert(/\\bSELECT\\b/i.test(sql));
-    assert(/c\\.account_id\\s*=\\s*2/.test(sql),'Account-scoped analytics');
-    assert(/i\\.channel_type\\s*=\\s*'Channel::Whatsapp'/.test(sql),'WhatsApp-only');
-    assert(!/\\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|CREATE|ALTER|GRANT|REVOKE)\\b\\s+(?:INTO|FROM|TABLE|ON|ROLE|DATABASE)/i.test(sql));
-    assert(!/contacts\\.phone_number|message_content|ct\\.phone_number/i.test(sql),'No exported PII');
+    assert(/\bSELECT\b/i.test(sql));
+    assert(/c\.account_id\s*=\s*2/.test(sql),'Account-scoped analytics');
+    assert(/i\.channel_type\s*=\s*'Channel::Whatsapp'/.test(sql),'WhatsApp-only');
+    assert(!/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|CREATE|ALTER|GRANT|REVOKE)\b\s+(?:INTO|FROM|TABLE|ON|ROLE|DATABASE)/i.test(sql));
+    assert(!/contacts\.phone_number|message_content|ct\.phone_number/i.test(sql),'No exported PII');
   } else assert.equal(pg.length,0,'No other current workflow may touch PostgreSQL');
   for(const n of w.nodes){
    if(n.type.includes('chatwoot'))assert(['getAll','getMetrics','getRecipients'].includes(n.parameters.operation));
