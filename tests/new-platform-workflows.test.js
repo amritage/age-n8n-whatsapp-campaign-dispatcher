@@ -14,7 +14,8 @@ const files=names.map(f=>JSON.parse(fs.readFileSync(path.join(dir,f),'utf8')));
 for(const w of files){
  assert.equal(w.active,false,'must import inactive');
  assert(w.nodes.some(n=>n.type==='n8n-nodes-base.manualTrigger'),'manual trigger required');
- assert(w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'),'schedule future support');
+ if(w.name.includes('AGE 03 -')) assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'),'Sensitive AGE 03 stays manual-only');
+ else assert(w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'),'schedule future support');
  assert.equal(w.settings.saveDataSuccessExecution,'none');
  assert.equal(w.settings.saveManualExecutions,false);
  assert.equal(w.settings.saveDataErrorExecution,'none');
