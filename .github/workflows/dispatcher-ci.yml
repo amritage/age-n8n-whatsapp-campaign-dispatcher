@@ -66,6 +66,8 @@ jobs:
         run: node tests/native-delivery-analytics.test.js
       - name: Test n8n provider evidence reducer subworkflow (no writes)
         run: node tests/delivery-evidence-subworkflow.test.js
+      - name: Validate authoritative 22-workflow lifecycle registry and no-live safety
+        run: node tests/workflow-lifecycle-manifest.test.js
       - name: Record check results in GitHub Actions summary
         if: always()
         run: |

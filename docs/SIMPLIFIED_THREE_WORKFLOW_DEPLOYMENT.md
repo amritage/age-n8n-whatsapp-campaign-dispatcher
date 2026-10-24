@@ -1,79 +1,37 @@
-# Simplified AGE Dispatcher diagnostics — 3 workflows, 2 recurring schedules> **CSV-first setup alternative:** Instead of running the one-time Data Tables setup workflow, you can import the two sample CSV files in [n8n Data Tables demo import instructions](../examples/n8n-data-tables/README.md). This creates the required named managed tables (20 portfolio and 34 event synthetic scenarios). Confirm the exact column types and delete synthetic records after testing. **Do not run setup again if both tables already exist correctly.** This changes the required import count from three JSON files to **two** (the six-hour unified monitor and daily analytics probe) plus two CSV imports.
+# Current n8n import guide — 2 monitors + optional setup
 
+**Updated 24 October 2026** · Target n8n 2.37.9 queue mode · Chatwoot v4.19.0 · EspoCRM.  
+**This replaces the older 3-workflow / 7-workflow recommendations.** The current authority is [the 22-workflow inventory](../workflows/README.md). No existing deployed n8n workflows are changed by GitHub edits.
 
-**Decision:** 23 October 2026. Targets: n8n 2.37.9 queue mode, Chatwoot v4.19.0, EspoCRM and built-in n8n Data Tables.
+## Exactly what to import
 
-## Recommended import list (only 3 files)
+| Order | File | How to operate |
+|---|---|---|
+| Optional one-time setup | [Data Tables setup](../workflows/age-dt-setup-managed-tables.json) | Only use when `AGE_Portfolio_Control` and `AGE_Dispatcher_Events` do not exist and weren't created from [CSV samples](../examples/n8n-data-tables/README.md). Run manually once. |
+| 1 | [Unified 6-hour health monitor](../workflows/age-unified-six-hour-health-readonly.json) | Import inactive, choose existing EspoCRM/Chatwoot credentials, run manually. It reads managed Data Tables and reports `HOLD` (zero sends). After successful test, enable its optional six-hour schedule. |
+| 2 | [AGE 07 WhatsApp Delivered/Read/Error analytics](../workflows/age-07-delivery-read-analytics-native.json) | Import inactive, choose Chatwoot credential, run manually. If Chatwoot's Enterprise campaign analytics is not entitled (401/403/404), leave its schedule disabled; that is a valid BLOCKED result. If authorized and working, an optional six-hour scan processes up to five native campaigns per run. |
 
-| Order | Importable JSON | When to run | Responsibility |
-|---|---|---|---|
-| 1 | [`age-dt-setup-managed-tables.json`](../workflows/age-dt-setup-managed-tables.json) | **Once, manually** | Creates/reuses `AGE_Portfolio_Control` and `AGE_Dispatcher_Events`, managed entirely by n8n. **Does not seed a portfolio or enable sending.** |
-| 2 | [`age-unified-six-hour-health-readonly.json`](../workflows/age-unified-six-hour-health-readonly.json) | **Every 6h** after first manual test | ONE operational report: EspoCRM campaign inventory/configuration, native Chatwoot WhatsApp campaign counts, portfolio health/26-hour cycle/rolling-use evidence, recorded Meta error codes and Data Table rollups; concludes `decision:HOLD` and `canSend:false` |
-| 3 | [`age-00-chatwoot-analytics-capability.json`](../workflows/age-00-chatwoot-analytics-capability.json) | **Every 24h** after first manual test | Independent, low-cost, feature-gated Chatwoot analytics GET (metrics for an existing one-off WhatsApp campaign). The result is PASS, BLOCKED (e.g. 403 or connection denied), or UNVERIFIED (no existing campaign). No campaign created. |
+**AGE 08** [provider evidence reducer](../workflows/age-08-verified-message-evidence-reducer.json) is **NOT an active fourth workflow**. It has no verified event collector, no durable cross-run ledger and no authenticated mapping to AGE attempts. It is developer-only.
 
-**Result:** Seven recommended imports become **three**; six scheduled diagnostics become **two active schedules** (6h and 24h). Once setup is done, only two recurring workflows require daily management.
+**Do NOT additionally import** AGE 00 (earlier daily analytics), AGE 01–06 modular variants, earlier recipient reports, old API readiness variants, PostgreSQL-based workflows, or the old sending/reconciliation **design shells**. They all remain in GitHub for history. Their in-JSON names now begin with `[OLD]`, `[LEGACY SQL]`, `[ADVANCED SQL]` or `[DESIGN SHELL]`.
 
-### Why 24h and 6h are not merged into one schedule
+## Expected safety behavior
 
-The daily native Chatwoot analytics check is endpoint- and entitlement-dependent. It does not need to run four times per day, while campaign inventory, portfolio holds and lightweight errors benefit from the six-hour cadence. Keeping this **one** independent probe prevents its failure (401/403/404 or no campaign) from interfering with routine operational monitoring. This is a conscious fault-isolation decision; fewer workflows are not automatically safer.
+- Both current workflows are read-only and committed `active:false`.
+- Unified health **never launches campaigns** or writes EspoCRM data; it reports only available controls, source health, and recorded events.
+- AGE 07 returns Chatwoot campaign analytics **Delivered already inclusive of Read**. Read is a separate subset and must not be added to Delivered; a confirmed Read without separate Delivered still proves delivery.
+- The code uses automatic campaign discovery, a bounded rotating scan, and a bounded failed-recipient breakdown. **Partial scans and unavailable provider analytics must not be described as complete reporting for every historical campaign.**
+- AGE 07 does **not** synchronize individual provider delivery events into EspoCRM: the entitled campaign analytics API does not expose verified Meta message IDs/timestamps and AGE attempt linkage required by its event endpoint.
+- n8n queue-mode Data Tables are fine for compact operational state; their row upserts do **not** constitute guaranteed atomic sending reservations.
+- No custom PostgreSQL schema is required for this current read-only import; no native Chatwoot source modifications are made.
 
-All high-cost or potentially mutable tasks, such as full recipient reconciliation, campaign creation, contact/label updates and sending, remain **separate future phases**—not hidden in the simplified diagnostics.
+## Manual checklist
 
-## Normal six-hour execution
+1. Verify Data Tables exist with correct column names/types; if created using demo CSVs, delete sample rows but retain the tables.
+2. Import only the two **USE NOW** workflow JSON files. Optional setup must run first *only when tables are missing*.
+3. Bind your existing credentials using n8n. Run both workflows manually and read all HOLD/BLOCKED reasons.
+4. If Chatwoot analytics is not enabled or the list/metric calls fail, keep AGE 07 inactive and retain the unified diagnostic.
+5. Enable schedules only after their manual executions pass. Do not enable earlier copies already imported to n8n; GitHub name changes don't update installed workflow titles automatically.
+6. Treat read-only testing and import-CI success as separate from a live sender or persistent provider→EspoCRM reconciliation.
 
-```text
-Manual Trigger / Schedule every 6h
-   → EspoCRM native Campaign Get All (selected metadata)
-   → summarize CRM counts + flags
-   → Chatwoot native Campaign Get All
-   → summarize provider WhatsApp batches
-   → Data Table AGE_Portfolio_Control Get (LIMIT 51)
-   → Data Table AGE_Dispatcher_Events Get (LIMIT 3001; most recent first)
-   → one consolidated HOLD-only report
-```
-
-Data Table reads use `resource=row`, `operation=get`, official `n8n-nodes-base.dataTable` v1.1, select table **By Name**, with no custom SQL or proprietary HTTP Request nodes. `continueOnFail=true` on the source reads and `alwaysOutputData=true` allow structured blocked reports for ordinary API errors and no-row cases. A Code-node exception (such as invalid duplicate CRM IDs or malformed event counts) intentionally fails the run rather than presenting incomplete figures as trustworthy.
-
-**The output is a diagnostic snapshot, not live send authorization**: it always includes `mode:DRY_RUN`, `decision:HOLD`, `canSend:false`, `createdCampaigns:0`, and `crmEventsWritten:0`.
-
-### Data safety and operational limits
-
-- `AGE_Portfolio_Control`: at most **50 rows** evaluated; the 51st causes an explicit incomplete-scan blocker. The setup schema includes `priorCycleHistoryVerified`; when reusing an existing table, **review the columns manually**, as the n8n create-if-not-exists operation will not alter that schema.
-- `AGE_Dispatcher_Events`: at most **3,000 rows** evaluated; the 3,001st causes a blocker, not silent truncation. Read the most recently recorded rows first. Aggregate errors and operational statuses only. Event table may be empty when no ingestion has been added; it does not prove zero provider failures.
-- Recipient opt-out `131050` is **hard marketing suppression**; `131049` keeps existing CRM retry timing; `131026` is ambiguous, not proof of an unregistered WhatsApp number.
-- Campaigns respect separate constraints (the global 26-hour cycle completion gap, Sunday/daytime windows, 7-day recipient min gap, delivered goal, independent attempt/Meta portfolio capacity and cost constraints), but the **complete send authorization logic and durable recipient evidence are not yet implemented**. The report explicitly identifies unverified requirements.
-- Even if a user sets all n8n Data Table flags true, the monitor **cannot send**. This is important because Data Table upserts are **not** sufficient for queue-mode atomic deduplication. No new PostgreSQL schema has been applied to n8n's application DB.
-- API credentials are selected inside n8n after import. No Campaign IDs, API tokens or URLs are embedded. All workflows are **inactive by default**. Check community nodes and tables inside the **same n8n project**.
-
-## Differences from previous 7-workflow pack
-
-| Previously recommended workflow | Status with this consolidation |
-|---|---|
-| `age-01-espo-campaign-preflight.json` | Merged into 6h health |
-| `age-02-portfolio-preflight-datatable.json` | Merged into 6h health |
-| `age-04-meta-error-watch-datatable.json` | Merged into 6h health |
-| `age-05-operations-dashboard-datatable.json` | Merged into 6h health |
-| `age-06-global-cycle-dry-run-datatable.json` | Merged into 6h health |
-| `age-00-chatwoot-analytics-capability.json` | Retained, daily, with error handling improved |
-| `age-dt-setup-managed-tables.json` | Retained, manual once |
-
-**Do not import the five former standalone files** when importing the simplified monitor. They remain in GitHub for historical compatibility with tests/documentation; importing them as well would create redundant schedules and scans. Existing *production* AGE Campaign Management/n8n/Chatwoot instances are not modified by these GitHub changes.
-
-## Manual deployment sequence
-
-1. Download/import only the **three** files above into a dedicated n8n project. Setup must be executed manually before the six-hour monitor. If tables already exist, inspect all columns and `priorCycleHistoryVerified` before proceeding. Do not fill them with invented Meta values.
-2. Attach existing `@traien/n8n-nodes-espocrm` and `@renatoascencio/n8n-nodes-chatwoot` credentials in the six-hour monitor, and Chatwoot credential in the daily probe.
-3. **Execute manually**: the 6h output should show CRM inventory, Chatwoot counts, portfolio holds, recorded event status and zero sends. For an empty `AGE_Portfolio_Control`, `NO_PORTFOLIO_CONTROL_ROWS` is expected and safe.
-4. Run daily capability probe manually. If no native WhatsApp campaign exists, expect UNVERIFIED. If the feature is unavailable or the Campaign GET fails, expect BLOCKED. Do not create a live campaign merely to satisfy this diagnostic.
-5. Activate the two schedules **only if read-only manual tests succeed**. No need to activate the Setup workflow; it has no schedule. Verify the actual timezone is `Asia/Kolkata`.
-6. Never activate the older standalone monitors simultaneously without a deliberate reason.
-
-## Test standard
-
-GitHub Actions tests:
-- Synthetic Code-node executions for empty/filled Data Tables, 25-hour vs 27-hour gap, 131050 hard marketing opt-out, unknown provider usage, denied APIs and 51/3001 record scan overflow.
-- Node types and all graph connections, only read operations and no credentials in exported JSON.
-- Actual **disposable n8n 2.37.9 CLI workflow JSON import** of all repo workflows.
-- Legacy PostgreSQL reference tests run **only in CI** and are irrelevant to n8n Data Tables import.
-
-**Not yet verified:** actual execution on your n8n queue workers; Chatwoot enterprise analytics entitlement and date/ID output shape; live EspoCRM API access; provider event reconciliation. This is a **safe diagnostics pack, not an operational LIVE WhatsApp dispatcher**.
+See [the source-verified 24-Oct reconciliation handoff](RECONCILIATION_WORKFLOWS_2026-10-24.md) and [Meta status reconciliation acceptance criteria](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md).
