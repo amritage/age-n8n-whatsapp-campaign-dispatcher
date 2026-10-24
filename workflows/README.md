@@ -9,9 +9,9 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 | Status | File | Why |
 |---|---|---|
 | **USE NOW — READ ONLY** | [`age-unified-six-hour-health-readonly.json`](age-unified-six-hour-health-readonly.json) | Cross-system six-hour diagnostic; import inactive and manually test before scheduling |
-| **USE NOW — READ ONLY** | [`age-07-delivery-read-analytics-native.json`](age-07-delivery-read-analytics-native.json) | Delivered/Read/error campaign analytics; only enable if Chatwoot permissions allow it |
+| **USE NOW — READ ONLY** | [`age-07-delivery-read-analytics-native.json`](age-07-delivery-read-analytics-native.json) | New DB-based account-2 native WhatsApp campaign snapshots; **manual pilot only until PostgreSQL credentials/licensing approved** |
 
-**Recommended schedules:** Both read-only monitors can run every 6 hours. Activate them separately only after manual tests. AGE 07 depends on Chatwoot campaign analytics entitlement; if the API returns 403 or BLOCKED, leave it inactive. The unified monitor can continue independently. **Do not also enable AGE 00 or the older recipient-report variants.**
+**Recommended schedules:** Both read-only monitors can run every 6 hours. Activate them separately only after manual tests. AGE 07 no longer calls the 401-blocked analytics API: it needs authorized **Chatwoot PostgreSQL SELECT-only** access to campaigns, campaign_recipients and inboxes. Keep its schedule disabled until permission/licensing checks and sample-count tests pass. The unified monitor can continue independently. **Do not also enable AGE 00 or the older recipient-report variants.**
 
 ## Optional or development only
 
@@ -51,6 +51,6 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 
 1. **Do not bulk-import all 22 files.** The CI importer checks compatibility, not recommended deployment.
 2. The lifecycle prefix is now part of the workflow **name visible after import into n8n**. Repository edits do **not** automatically rename earlier copies already installed in your n8n instance; review old imported workflows manually and disable redundant schedules. Never delete or overwrite production workflows automatically.
-3. Current workflows are safe for **read-only manual tests**, not reliable live Meta delivery-to-EspoCRM syncing. Verified Meta message ID, campaign/recipient/attempt mapping and durable idempotent EspoCRM writes remain outstanding.
+3. AGE 07 is an **inactive read-only SQL replacement** of the previous paid-endpoint version. It has not been executed against the live n8n credential, does not store Data Table summaries and does not perform EspoCRM writes. See [SQL deployment checklist](../docs/SIMPLIFIED_THREE_WORKFLOW_DEPLOYMENT.md) and [field-level evidence](../docs/CHATWOOT_ANALYTICS_DISCOVERY_2026-10-24.md). Current workflows are safe for **read-only manual tests once licensed/authorized**, not reliable live Meta delivery-to-EspoCRM syncing. Verified Meta message ID, campaign/recipient/attempt mapping and durable idempotent EspoCRM writes remain outstanding.
 4. The [machine-readable index](WORKFLOW_STATUS.json) lists every workflow and its status; CI fails if a new workflow is unclassified or a current monitor adds writes.
-5. Before importing, review the [24-Oct Chatwoot delivery/Read guide](../docs/RECONCILIATION_WORKFLOWS_2026-10-24.md). `delivered` already includes `read` in entitled Chatwoot campaign metrics; do not add them.
+5. Before importing, review the [verified PostgreSQL evidence](../docs/CHATWOOT_ANALYTICS_DISCOVERY_2026-10-24.md). AGE 07 now counts statuses 3+4 as Delivered inclusive of Read, retaining separate Read count; no double-counting. The older handoff describes the previous Enterprise-API workflow and is historical.
