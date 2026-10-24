@@ -64,6 +64,11 @@ assert.equal(partial.status,'PARTIAL_EVIDENCE');
 assert(partial.records[0].warnings.includes('MISSING_OR_INVALID_WAMID_FORMAT'));
 assert(partial.records[0].warnings.includes('MISSING_CURRENT_MOBILE'));
 assert.equal(partial.records[0].canWriteEspocrm,false);
+const readWithoutDeliveredTimestamp=run([fixture(1,{delivered_at:null,read_at:'2026-09-04T05:54:55Z'})],settings);
+assert.equal(readWithoutDeliveredTimestamp.status,'PAGE_READ','Read proves delivery despite absent delivered_at');
+assert.equal(readWithoutDeliveredTimestamp.records[0].deliveredConfirmed,true);
+assert.equal(readWithoutDeliveredTimestamp.records[0].timestamps.delivered,null);
+
 const mismatch=run([fixture(1,{account_id:'3'})],settings);
 assert.equal(mismatch.status,'BLOCKED');assert.equal(mismatch.reason,'ACCOUNT_MISMATCH');
 const invalid=run([fixture(1,{message_status:20})],settings);
