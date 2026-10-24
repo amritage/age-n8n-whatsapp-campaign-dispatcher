@@ -57,11 +57,38 @@ Chatwoot v4.19's schema has a unique index on campaign ID plus contact ID: this 
 
 ## Integration plan and safeguards
 
-The existing AGE 07 diagnostic calls the Enterprise analytics endpoint, which returned 401; its schedule should stay disabled where that access is unavailable. The unified health monitor can continue independently. This documentation update does not modify any workflow JSON, enable sends, or update EspoCRM.
+The original AGE 07 diagnostic called the Enterprise analytics endpoint and encountered 401. A replacement AGE 07 read-only PostgreSQL workflow has since been committed with automated test coverage, but is **inactive and not live-deployed**. The unified health monitor can continue independently. This documentation update does not modify any workflow JSON, enable sends, or update EspoCRM.
 
-A future implementation may evaluate an authorized read-only PostgreSQL source, using a dedicated SELECT-only role, private Coolify networking, pagination, incremental checkpoints, overlap and idempotent replay. Verify Chatwoot-to-EspoCRM campaign/recipient/attempt mappings, raw Meta identity, data freshness, and license entitlement before use. Reading an Enterprise-associated table does not by itself establish authorization to use a paid feature. Compact metrics/checkpoints can go into n8n Data Tables; recipient-level history belongs in appropriately restricted records.
+The replacement workflow must be connected only through an authorized read-only PostgreSQL source using a dedicated SELECT-only role, private Coolify networking, pagination, incremental checkpoints, overlap and idempotent replay. Verify Chatwoot-to-EspoCRM campaign/recipient/attempt mappings, raw Meta identity, data freshness, and license entitlement before use. Reading an Enterprise-associated table does not by itself establish authorization to use a paid feature. Compact metrics/checkpoints can go into n8n Data Tables; recipient-level history belongs in appropriately restricted records.
 
 Relevant upstream references: `chatwoot/chatwoot` v4.19.0 `db/schema.rb`, `enterprise/app/models/campaign_recipient.rb`, and `enterprise/app/controllers/api/v1/accounts/campaigns/analytics_controller.rb`.
+
+## PostgreSQL analytics role — grants observed 24 October 2026
+
+Role: `age_chatwoot_analytics_ro` in the `chatwoot` PostgreSQL database.
+
+The operator previously created this login role and granted `CONNECT` on database `chatwoot`, `USAGE` on schema `public`, and `SELECT` on tables `public.campaigns`, `public.campaign_recipients`, and `public.contacts`. A `has_table_privilege` check returned `can_read=t` and `can_update=f` for all three tables.
+
+**New confirmed grant:** The operator ran the following at the PostgreSQL prompt and received `GRANT` (success):
+
+```sql
+GRANT SELECT ON TABLE public.inboxes
+TO age_chatwoot_analytics_ro;
+```
+
+This grants **table-level read access** to inbox metadata so the revised AGE 07 SQL can join/filter inbox data. It does not grant `INSERT`, `UPDATE`, `DELETE`, or access to every Chatwoot table. The success response confirms the grant executed; a direct `has_table_privilege` read/write check for `inboxes` has **not yet been reported**.
+
+Optional SELECT-only verification, which should return `t, f, f, f` for this role:
+
+```sql
+SELECT
+  has_table_privilege('age_chatwoot_analytics_ro', 'public.inboxes', 'SELECT') AS can_select,
+  has_table_privilege('age_chatwoot_analytics_ro', 'public.inboxes', 'INSERT') AS can_insert,
+  has_table_privilege('age_chatwoot_analytics_ro', 'public.inboxes', 'UPDATE') AS can_update,
+  has_table_privilege('age_chatwoot_analytics_ro', 'public.inboxes', 'DELETE') AS can_delete;
+```
+
+Safeguards: Keep the role's password only in secure n8n credentials, never GitHub; use a private network. PostgreSQL roles/grants normally survive routine Chatwoot or Coolify upgrades that retain the database cluster, but a full rebuild or database-only restore may need roles restored separately. Existing grants do not automatically apply to new future tables. Continue checking relevant licensing terms before production access to Enterprise-related analytics data.
 
 ## Current implementation files (updated 24 October)
 
