@@ -1,6 +1,8 @@
+**NEW (24 Oct):** [AGE 03 recipient source-evidence manual pilot](../docs/RECIPIENT_EVIDENCE_PAGING_AND_MATCHING_2026-10-24.md) has replaced its former advanced-SQL version **in the same file**. It is **development-only, inactive, manually paginated, and contains private recipient identifiers**. Do not mistake it for a third active six-hour workflow. AGE 07 remains your proven aggregate monitor.
+
 # AGE workflows: official import status and complete inventory
 
-**There are 22 workflow JSON files. Import only the two current read-only diagnostic workflows, plus one optional setup workflow if you have not already created the Data Tables from CSV.** One additional workflow (AGE 08) is developer-only and has no incoming producer or CRM synchronization. The other 18 are superseded versions, advanced SQL/HTTP alternatives, or inert shells.
+**There are 22 workflow JSON files. Import only the two current read-only diagnostic workflows, plus one optional setup workflow if you have not already created the Data Tables from CSV.** Two additional workflows are development-only: **AGE 03** is a manual, sensitive recipient-evidence page (requires Chatwoot PostgreSQL SELECT on contacts; do not schedule), and **AGE 08** is a disconnected message-event reducer. The other **17** are superseded versions, advanced SQL/HTTP alternatives, or inert shells.
 
 All 22 JSON files are committed with `active: false`. None is a live Meta sender or complete recipient-level EspoCRM delivery reconciler.
 
@@ -32,7 +34,7 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 | [OLD - MERGED INTO UNIFIED] | [`age-01-espo-campaign-preflight.json`](age-01-espo-campaign-preflight.json) | Stand-alone CRM preflight |
 | [OLD - MERGED INTO UNIFIED] | [`age-02-portfolio-preflight-datatable.json`](age-02-portfolio-preflight-datatable.json) | Stand-alone managed-table portfolio preflight |
 | [LEGACY SQL - DO NOT IMPORT] | [`age-02-postgres-portfolio-preflight.json`](age-02-postgres-portfolio-preflight.json) | Old PostgreSQL portfolio preflight |
-| [ADVANCED SQL - NOT RECOMMENDED] | [`age-03-chatwoot-evidence-readonly.json`](age-03-chatwoot-evidence-readonly.json) | Optional privileged read-only Chatwoot DB evidence audit |
+| [DEV ONLY - READ ONLY] | [`age-03-chatwoot-evidence-readonly.json`](age-03-chatwoot-evidence-readonly.json) | New **manual-only** recipient-level keyset paging: current mobile, wamid, Delivered/Read/Failed timestamps and Meta codes. Source evidence only; no verified CRM mapping or writes. |
 | [OLD - MERGED INTO UNIFIED] | [`age-04-meta-error-watch-datatable.json`](age-04-meta-error-watch-datatable.json) | Stand-alone error monitor |
 | [LEGACY SQL - DO NOT IMPORT] | [`age-04-meta-error-watch.json`](age-04-meta-error-watch.json) | Old PostgreSQL error monitor |
 | [OLD - MERGED INTO UNIFIED] | [`age-05-operations-dashboard-datatable.json`](age-05-operations-dashboard-datatable.json) | Stand-alone operations dashboard |
