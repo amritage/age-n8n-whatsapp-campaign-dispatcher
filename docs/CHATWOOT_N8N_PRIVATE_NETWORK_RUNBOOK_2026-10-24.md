@@ -21,6 +21,22 @@ If `grep` finds nothing, inspect the **beginning** of a complete recent crash in
 
 Do not retry upgrades, clear queues, run migrations or expose database ports. Keep **AGE 07 and additional n8n workflow development paused** during the incident. If logs show a startup connection problem clearly caused by the network change, a supervised rollback of Coolify's network attachment to **Use the stack network only**, preserving all persistent volumes, is the preferred reversible mitigation; verify web, Sidekiq, DB and Redis health afterward.
 
+### Incident update — confirmed repeated restart (2026-10-24)
+
+The operator ran `docker inspect sidekiq-au4akmkdy3bkd76n7m0ay0ky --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} RestartCount={{.RestartCount}}'` on the VPS. Actual output: **`Status=restarting ExitCode=1 RestartCount=18`**. A case-sensitive `grep` over the last 300 log lines for `Error|FATAL|PG::|Redis::|Connection refused|Caused by|name resolution` returned no text. **Absence of grep matches is not absence of an exception**, and exit code 1 does not identify the dependency or root cause. The Sidekiq crash loop is persistent and should be treated as an operational incident; pause other workflow changes.
+
+**Recovery priority:** Because symptoms appeared immediately after changing Coolify `Network attachment` to `Connect to the predefined Coolify network`, operator should first restore the known prior configuration, **`Use the stack network only`**, then apply **Restart current version** if needed to materialize the Compose network change. **Do not upgrade images or delete DB/Redis volumes.** This is a reversible rollback recommendation, **not a proven root-cause finding**. Monitor after restart, ensure Sidekiq is `Up` (not `Restarting`) and web service health and WhatsApp background processing recover. The shared Coolify network might introduce ambiguous service DNS aliases (e.g. Redis), but this hypothesis requires actual logs or inspection; do not state it as fact.
+
+To distinguish genuine recovery from transient restart, run **from VPS host**:
+
+```bash
+docker ps --filter name=au4akmkdy3bkd76n7m0ay0ky --format 'table {{.Names}}\t{{.Status}}\t{{.Networks}}'
+docker inspect sidekiq-au4akmkdy3bkd76n7m0ay0ky --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}} Restarts={{.RestartCount}}'
+docker logs --tail 200 --timestamps sidekiq-au4akmkdy3bkd76n7m0ay0ky 2>&1 | sed -n '1,85p'
+```
+
+The final command deliberately **does not filter by error keywords** and is intended to capture the first visible exception, which may be outside the previous `tail 300` or not matched by the grep. Sanitize credentials and customer data before sharing. **Status: OPEN; no recovery verified yet.**
+
 **Immediate safe incident triage from VPS host (no container changes):**
 
 ```sh
