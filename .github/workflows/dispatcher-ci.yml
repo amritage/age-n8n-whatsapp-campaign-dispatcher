@@ -64,6 +64,8 @@ jobs:
         run: node tests/delivery-evidence-core.test.js
       - name: Verify native Chatwoot delivery/Read and failure-code analytics reconciliation
         run: node tests/native-delivery-analytics.test.js
+      - name: Test AGE 03 recipient snapshot paging, Read, failed codes and zero writes
+        run: node tests/recipient-page-workflow.test.js
       - name: Test n8n provider evidence reducer subworkflow (no writes)
         run: node tests/delivery-evidence-subworkflow.test.js
       - name: Validate authoritative 22-workflow lifecycle registry and no-live safety
@@ -112,6 +114,8 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y postgresql-client
           fi
+      - name: Test AGE 03 keyset SQL against isolated PostgreSQL recipients
+        run: node tests/chatwoot-recipient-page-sql.test.js
       - name: Test AGE 07 SQL against isolated Chatwoot-shaped tables
         run: node tests/chatwoot-postgres-analytics-sql.test.js
       - name: Apply reporting schema twice (idempotence)
