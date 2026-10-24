@@ -1,5 +1,67 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Final generated Compose preview audit — 24 October 2026, ~20:20 IST (NOT DEPLOYED)
+
+The operator supplied the **Coolify-generated 580-line Deployable Compose**. A local YAML parse succeeded. It is structurally valid YAML, with n8n v2.44.6, queue worker, n8n DB, Redis, sandbox services, and all original named volume references preserved in the preview. The original n8n hostname/proxy points at the resource UUID network. There is **one redundant logical-network mapping that should be simplified before a production redeploy**.
+
+### Grounded network table from generated preview
+
+| Compose key | Physical Docker network |
+| --- | --- |
+| `default` | `l11w6qi16cakcn9f855wbbk1` |
+| `l11w6qi16cakcn9f855wbbk1` | `l11w6qi16cakcn9f855wbbk1` |
+| `chatwoot_private` | `au4akmkdy3bkd76n7m0ay0ky` |
+
+Main `n8n` and `n8n-worker` both list three keys (`default`, UUID key, `chatwoot_private`); they actually identify only **two different physical networks**. Each sandbox service lists `default` and the UUID key, which point to the **same physical network**. `postgresql`, `redis`, `task-runners` and `searxng` use the UUID network. The proxy labels specify the UUID network. Thus **all necessary dependencies and the extra Chatwoot DB route are represented**, and the earlier “missing sandbox network declaration” concern is RESOLVED. No evidence yet that the duplicate causes failure, but it is unnecessary and should not be introduced deliberately.
+
+### Minimal source-level normalization before save
+
+In the **source Edit Compose File**, not the generated preview:
+
+1. For `n8n` and `n8n-worker`, use the two keys `l11w6qi16cakcn9f855wbbk1` and `chatwoot_private`. Replace `default` if present; do not add a third name.
+2. For `sandbox-certs`, `sandbox-api`, and `sandbox-runner-1`, leave or restore their original single `l11w6qi16cakcn9f855wbbk1` network.
+3. Root-level `networks` should declare just these **two network entries**, both `external: true`: UUID and `chatwoot_private`; **remove the `default` alias mapping** to the same UUID network.
+4. Do NOT change `postgresql`, `redis`, task runners, images, credentials, volumes, healthchecks or Chatwoot Compose. Do not expose PostgreSQL to the internet.
+
+**Expected source fragment (not a whole Compose file):**
+
+```yaml
+services:
+  n8n:
+    # other existing fields unchanged
+    networks:
+      - l11w6qi16cakcn9f855wbbk1
+      - chatwoot_private
+  n8n-worker:
+    # other existing fields unchanged
+    networks:
+      - l11w6qi16cakcn9f855wbbk1
+      - chatwoot_private
+  sandbox-certs:
+    networks:
+      - l11w6qi16cakcn9f855wbbk1
+  sandbox-api:
+    networks:
+      - l11w6qi16cakcn9f855wbbk1
+  sandbox-runner-1:
+    networks:
+      - l11w6qi16cakcn9f855wbbk1
+
+networks:
+  l11w6qi16cakcn9f855wbbk1:
+    external: true
+    name: l11w6qi16cakcn9f855wbbk1
+  chatwoot_private:
+    external: true
+    name: au4akmkdy3bkd76n7m0ay0ky
+```
+
+**Preview again after saving the source editor state / clicking preview without applying deployment.** The definitive guard is the newly generated network table: **only one logical alias for physical n8n UUID** and **the extra Chatwoot network only on n8n main/worker**, not on databases/Redis/Sidekiq. If Coolify 4.5.0 reinserts `default` and maps it to the same physical UUID, do not blindly attempt a live deployment. Inspect the new generated result and Coolify behavior first. The source edit and generation steps are recommendations; **no deployment or automatic persistence is claimed**.
+
+**Privacy:** Only non-sensitive service/network identifiers and structural paths are recorded here. No Compose environment secrets or user data were copied.
+
+
+
 ## Full n8n Compose review — 24 October 2026, approximately 20:05 IST (needs correction before deploy)
 
 **Operator provided the full current n8n SOURCE Compose** for image v2.44.6. This supersedes prior partial-snippet ambiguity.
