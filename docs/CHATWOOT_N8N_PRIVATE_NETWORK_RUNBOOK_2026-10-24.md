@@ -1,5 +1,25 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Coolify bottom-of-file screenshot review — 24 October 2026 at approximately 20:04 IST
+
+Screenshot of Coolify's n8n Compose editor at lines 222–225 **confirms a syntactically well-indented root-level external network declaration**:
+
+```yaml
+networks:
+  chatwoot_private:
+    external: true
+    name: au4akmkdy3bkd76n7m0ay0ky
+```
+
+There is no second root `networks` section visible in the shown bottom of the file. The declaration correctly refers to the already-existing Chatwoot resource network and does not by itself connect any service.
+
+**Still unverified in THIS screenshot:** whether earlier mis-indented `n8n` and `n8n-worker` service-level network entries were corrected; whether Coolify's generated `default` network maps to n8n's existing `l11w6qi16cakcn9f855wbbk1`; whether the existing `coolify` proxy attachment is preserved; and whether the resulting Compose is valid. The screenshot shows **Preview Generated Compose** and **Save Changes** buttons, not proof that changes were saved or applied.
+
+**Next action:** click **Preview Generated Compose** only (no Save/Restart), inspect network mapping and the complete `n8n` and `n8n-worker` service blocks. Required result: each has both the existing internal network and `chatwoot_private`, `postgresql` and `redis` remain on the same internal network, `n8n` retains its proxy reachability, and `sandbox-api`, `task-runners` and related services retain their previous networks. If generated Compose returns `undefined network default` or modifies original n8n connectivity, stop and correct YAML before deploying.
+
+**No production change has been verified from this screenshot.** Root declaration only: VERIFIED; full deployable network compatibility: PENDING.
+
+
 ## Coolify editor screenshot review — 24 October 2026, approximately 20:00 IST (UNSAVED YAML; correction required)
 
 Operator shared two screenshots of Coolify → n8n → Edit Compose File after entering `default` and `chatwoot_private` entries:
