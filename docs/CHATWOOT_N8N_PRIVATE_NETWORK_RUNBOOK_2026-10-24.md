@@ -4,6 +4,23 @@
 
 **Operator screenshot after changing Coolify Service → General → Network attachment to "Connect to the predefined Coolify network":** Coolify overall service shows **Degraded**; Chatwoot, PostgreSQL and Redis show **Running (healthy)**; **Sidekiq shows "Restarting (unknown)"**. The operator's browser also contains a "Site not available" tab, but whether that domain is specifically Chatwoot and the exact error are not independently verified. **This may represent a production background-worker outage. Prioritize recovery over AGE 07 expansion.** The changed network setting and restart happened close together, but **causality has not yet been proven**.
 
+### New diagnostic evidence: 24 Oct 2026, 13:54:47 as printed in logs (incident still OPEN)
+
+The operator provided a Sidekiq/Ruby stack trace ending in `sidekiq-7.3.10/lib/sidekiq/cli.rb:305`, `rails-7.2.3.1` initializers and `/app/config/environment.rb:5`. This **proves Sidekiq aborts during Rails initialization**, but the *exception class and message*, usually above the stack trace, were **not present in the excerpt**. There is **not enough evidence to attribute the failure to Redis, PostgreSQL, DNS, or the newly shared network yet**.
+
+From VPS SSH host only, gather the preceding exception and current state without mutation:
+
+```bash
+docker inspect sidekiq-au4akmkdy3bkd76n7m0ay0ky \
+  --format 'State={{.State.Status}} Exit={{.State.ExitCode}} Restarts={{.RestartCount}} Error={{.State.Error}}'
+docker logs --tail 300 --timestamps sidekiq-au4akmkdy3bkd76n7m0ay0ky 2>&1 \
+  | grep -E -B 12 -A 16 -m 3 '([A-Za-z]+Error|PG::|Redis::|FATAL|Name or service not known|Temporary failure in name resolution|Connection refused|Caused by|Error connecting)'
+```
+
+If `grep` finds nothing, inspect the **beginning** of a complete recent crash in `docker logs --tail 200 --timestamps ...`, not only the last Ruby frames. Remove tokens/customer data from output.
+
+Do not retry upgrades, clear queues, run migrations or expose database ports. Keep **AGE 07 and additional n8n workflow development paused** during the incident. If logs show a startup connection problem clearly caused by the network change, a supervised rollback of Coolify's network attachment to **Use the stack network only**, preserving all persistent volumes, is the preferred reversible mitigation; verify web, Sidekiq, DB and Redis health afterward.
+
 **Immediate safe incident triage from VPS host (no container changes):**
 
 ```sh
