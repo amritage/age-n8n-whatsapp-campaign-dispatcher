@@ -1,6 +1,9 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
-**Created 24 October 2026.** This is a living, **evidence-based** operational record for the AGE environment. Do not store passwords, token values, URLs with credentials, customer phone numbers, IP addresses, or environment-variable dumps in this public repository.
+**LATEST VERIFIED MILESTONE — 24 Oct 2026:** A screenshot from n8n shows the credential named **Chatwoot Postgres** and the green message **Connection tested successfully** for `postgres-au4akmkdy3bkd76n7m0ay0ky` / `chatwoot` / `age_chatwoot_analytics_ro`. This supersedes the earlier EAI_AGAIN incident. The exact network-connect commands and worker reachability have not been independently observed, and the next milestones are **read permission validation, inactive AGE 07 manual execution, and persistent Coolify networking**. Do not claim production reconciliation is already active.
+
+
+**Created 24 October 2026; updated after successful n8n credential connection.** This is a living, **evidence-based** operational record for the AGE environment. Do not store passwords, token values, URLs with credentials, customer phone numbers, IP addresses, or environment-variable dumps in this public repository.
 
 ## Observed facts (confirmed by operator)
 
@@ -18,7 +21,8 @@
 | AGE 07 source | SELECT-only PostgreSQL summary JSON in GitHub | Committed and CI synthetic-tested; **not connected/deployed live** |
 | Internet exposure | No reason to open PostgreSQL port to public internet | Do not publish 5432 |
 | Permanent Coolify networking | **Not configured/verified yet** | OPEN |
-| Credential test and first live read | **Not verified yet** | OPEN |
+| n8n credential test | **SUCCESS: 'Connection tested successfully'** on 2026-10-24; screenshot shows 'Chatwoot Postgres' with `age_chatwoot_analytics_ro`, DB `chatwoot`, internal host | VERIFIED (DNS/TCP/auth); no SQL permission proof |
+| First live AGE 07 read | **Not verified yet** | OPEN |
 
 **Diagnosis:** The two services are isolated on separate Docker networks. The n8n main and worker were on `coolify` and their resource network, while Chatwoot PostgreSQL was only on its Chatwoot resource network. Docker DNS typically resolves these internal names only across shared user-defined networks. `EAI_AGAIN` is a DNS failure; it is **not** evidence that the password is incorrect.
 
@@ -124,9 +128,10 @@ Only run rollback if these were the attachments actually added; do not disconnec
 | 2026-10-24 | n8n PostgreSQL credential attempted with internal Chatwoot host | BLOCKED (`getaddrinfo EAI_AGAIN`) |
 | 2026-10-24 | Host `docker ps` network membership inspected | VERIFIED (two isolated resource networks) |
 | 2026-10-24 | GitHub runbook authored; source and CI tests previously passed | DOCUMENTED; not live-deployed |
-| PENDING | Stage 1 temporary network attach + reachability check | NOT YET VERIFIED |
+| 2026-10-24 | n8n main-container private DNS/TCP/database login | **VERIFIED indirectly** by successful n8n credential test; command output and worker attachment not independently seen |
+| PENDING | Verify worker network membership and TCP | NOT YET VERIFIED |
 | PENDING | PostgreSQL role read-only grant verification | NOT YET VERIFIED |
-| PENDING | n8n credential test (no password shared) | NOT YET VERIFIED |
+| 2026-10-24 | n8n credential 'Chatwoot Postgres' using read-only username | VERIFIED via screenshot: **Connection tested successfully**; screenshot does not prove SELECT permissions or workflow execution |
 | PENDING | Approved durable Coolify network configuration | NOT YET VERIFIED |
 | PENDING | AGE 07 live manual read-only results | NOT YET VERIFIED |
 
