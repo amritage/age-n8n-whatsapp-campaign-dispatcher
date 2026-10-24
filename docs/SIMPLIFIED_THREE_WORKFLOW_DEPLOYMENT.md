@@ -37,6 +37,40 @@
 
 See [the source-verified 24-Oct reconciliation handoff](RECONCILIATION_WORKFLOWS_2026-10-24.md) and [Meta status reconciliation acceptance criteria](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md).
 
+## Coolify → n8n: connection and first-run verification (added 24 October)
+
+**After the operator has granted SELECT on `public.inboxes`:** do not assume the new role has the other privileges or that the n8n container can reach Chatwoot PostgreSQL. Check permissions **without returning any customer records** in the existing Coolify PostgreSQL terminal:
+
+```sql
+SELECT
+  rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole,
+  has_database_privilege(rolname, 'chatwoot', 'CONNECT') AS can_connect,
+  has_schema_privilege(rolname, 'public', 'USAGE') AS can_use_public,
+  has_table_privilege(rolname, 'public.campaigns', 'SELECT') AS can_read_campaigns,
+  has_table_privilege(rolname, 'public.campaign_recipients', 'SELECT') AS can_read_recipients,
+  has_table_privilege(rolname, 'public.inboxes', 'SELECT') AS can_read_inboxes,
+  has_table_privilege(rolname, 'public.campaign_recipients', 'INSERT') AS can_insert_recipients,
+  has_table_privilege(rolname, 'public.campaign_recipients', 'UPDATE') AS can_update_recipients,
+  has_table_privilege(rolname, 'public.campaign_recipients', 'DELETE') AS can_delete_recipients
+FROM pg_roles WHERE rolname='age_chatwoot_analytics_ro';
+```
+
+Expected: exactly one role row, LOGIN and three SELECT permissions true; SUPERUSER/CREATEDB/CREATEROLE, INSERT/UPDATE/DELETE false. **Do not copy role passwords, connection URLs or database owner details into tickets/GitHub.** If missing grants, an authorized DBA can add only the required CONNECT, USAGE and SELECT privileges—not broad `ALL TABLES` access.
+
+**Configure n8n:**
+
+1. In Coolify, locate Chatwoot PostgreSQL **General → Postgres URL (internal)**, and copy only its *internal hostname* (not the owner username/password). Use the database name `chatwoot` and port `5432`, unless Coolify says otherwise.
+2. Confirm n8n and Chatwoot PostgreSQL are attached to the **same Docker destination network**. A Coolify Compose/Service installation may require an explicitly approved *Connect To Predefined Network* setting and a redeploy; do not enable public PostgreSQL access. Validate networking before changing a running service.
+3. In n8n **Credentials → New → Postgres**, set Host = internal hostname, Database = `chatwoot`, User = `age_chatwoot_analytics_ro`, Password = the secret set privately with `\\password`, Port = 5432. Follow server-specific SSL settings; do not simply ignore certificate failures. Test the credential.
+4. Import [AGE 07](../workflows/age-07-delivery-read-analytics-native.json) **as a new, inactive workflow**, bind only this PostgreSQL credential to **Chatwoot PostgreSQL - Read Campaign Rollups**, and ensure previous AGE 07 versions remain disabled. Do not run if required licensing/authorization review is unresolved.
+5. Run **Manual Trigger** with the workflow still inactive. For a successful historical snapshot, look for campaign display ID `2`: audience 910, sent-only 3, delivered-inclusive-of-Read 660, Read 505, failed 247, source IDs 910, coded errors 247. These were operator-observed historical values and could have changed; validate against a fresh independent SQL query when needed.
+6. Expected top-level: `mode=READ_ONLY`, `source=CHATWOOT_POSTGRES_CAMPAIGN_RECIPIENT_SNAPSHOT`, `crmEventWrites=0`, `dataTableWrites=0`, `sends=0`. Inspect `reports[].reasons`. `BLOCKED` means an error/inconsistency; `PARTIAL` means a coverage gap or scan cap, not successful full coverage.
+7. Keep the six-hour schedule inactive until manual test, database security and acceptable license/access terms are all verified. **Do not create a second active AGE 07**. No existing Data Table, EspoCRM or Chatwoot records are changed by this workflow.
+
+**If n8n's Test Credential fails:** first verify the hostname/network. `localhost` refers to the n8n container, **not** Chatwoot PostgreSQL. Distinguish DNS/network errors from PostgreSQL password failure (`28P01`), `pg_hba.conf` access denial, and database/table grants (`42501`). Do not resolve this by opening port 5432 publicly or using Chatwoot's database owner credentials.
+
+Coolify official documentation: [PostgreSQL internal URL](https://coolify.io/docs/databases/postgresql) · [Service networking](https://coolify.io/docs/services/configuration/networking). n8n: [Postgres credentials](https://docs.n8n.io/integrations/builtin/credentials/postgres).
+
 ## Important field-level reference
 
 See [2026-10-24 verified Chatwoot database discovery](CHATWOOT_ANALYTICS_DISCOVERY_2026-10-24.md) for statuses, joins, timestamps, 131026/131049 errors and limitations. The workflow performs only an **aggregate read** and preserves the existing 22-file inventory; a later gated implementation must handle contact/attempt-level EspoCRM mapping and Data Table upserts if approved.
