@@ -1,5 +1,16 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Post-recovery AGE 07 execution — 24 October 2026, approximately 19:37 IST
+
+**Verified from operator's n8n screenshot after Chatwoot service recovered:** Existing workflow `[USE NOW - READ ONLY] AGE 07 - Chatwoot PostgreSQL Campaign Delivery/Read Analytics` shows green execution success. The Chatwoot PostgreSQL query node completed and emitted **2 items**; the validation Code node completed and emitted **1 item**. The UI toast states **"Workflow executed successfully."** This proves post-restart SQL query execution and successful validation-node completion using the existing Chatwoot private network.
+
+**Evidence limits:** The screenshot does not show the new validator JSON fields, so do **not** claim the exact current audience/Read/failure totals have been rechecked. The earlier 910/660/505/247 values remain the last fully visible numerical snapshot. The screenshot shows **Publish**, not proof of an active recurring schedule; the Schedule Trigger node highlighted during manual execution does **not** establish that six-hour autonomous scheduling has been enabled. No write nodes exist in AGE 07.
+
+**Revised operational status:** Chatwoot and Sidekiq: **healthy by container inspection**; private n8n-to-Chatwoot PostgreSQL SQL: **working after restart**; persistent network configuration: **not yet proven across n8n container recreation**; producer/recipient-level CRM matching: **not implemented**; CRM writes: **not enabled**; Chatwoot licensing/authorization: **still requires operator review**.
+
+**Next high-ROI action:** Make the already-working n8n main and worker private network membership persistent through Coolify's saved service/Compose configuration, **without changing the Chatwoot Service's network attachment again**. Review existing Compose and storage backups before any n8n redeploy. Separately audit the DB role's missing write privileges with a SELECT of `pg_roles` and `has_table_privilege`; do not run any SQL writes for the privilege test.
+
+
 ## Post-restart verification — 24 October 2026 (operator-provided Docker output)
 
 **Verified after Chatwoot restart:** All four containers are `Up 4 minutes (healthy)` at the time of inspection: `chatwoot`, `sidekiq`, `postgres`, and `redis` under `au4akmkdy3bkd76n7m0ay0ky`. Chatwoot's stack is now **only** on its resource-specific network.
