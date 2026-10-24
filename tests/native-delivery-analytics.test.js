@@ -22,7 +22,8 @@ for(const n of w.nodes.filter(x=>x.type.includes('n8n-nodes-chatwoot'))){
  assert.equal(n.continueOnFail,true);
 }
 assert.equal(node('Chatwoot - Get Failed Recipients').parameters.options.status,'failed');
-assert.equal(node('Chatwoot - Get Failed Recipients').parameters.returnAll,true);
+assert.equal(node('Chatwoot - Get Failed Recipients').parameters.returnAll,false);
+assert.equal(node('Chatwoot - Get Failed Recipients').parameters.limit,501);
 const p='Select Recent Campaigns - Rotating Batches',a='Attach Campaign Context to Metrics',f='Validate and Report Aggregate Failures';
 let empty=run(p,{items:[]});assert.equal(empty[0].json.hasCampaign,false);
 let unavailable=run(p,{items:[it({error:'403'})]});assert.equal(unavailable[0].json.availability,'BLOCKED');
@@ -62,6 +63,8 @@ const access=run(a,{items:[it({error:'Forbidden',httpCode:'403'},0),metrics[1]]}
 const denied=run(f,{items:[it({error:'Forbidden'},0)]},{[a]:access})[0].json;
 assert.equal(denied.status,'PARTIAL_OR_BLOCKED');
 assert(denied.reports[0].reasons.includes('ANALYTICS_UNAVAILABLE'));
+const overLimit=run(f,{items:[]},{[a]:ctx.map((v,i)=>i===0?{...v,json:{...v.json,expectedFailed:501}}:v)})[0].json;
+assert(overLimit.reports[0].reasons.includes('FAILURE_SCAN_LIMIT_EXCEEDED'));
 const noReport=run('No Reportable Campaigns',{items:unavailable})[0].json;assert.equal(noReport.status,'BLOCKED');
 const all=Array.from({length:70},(_,i)=>it({id:100+i,campaign_type:'one_off',campaign_status:i<5?'processing':'completed',
  started_at:1792800000+i,completed_at:i<5?null:1792800000+i,inbox:{channel_type:'Channel::Whatsapp'}}));
