@@ -187,14 +187,14 @@ jobs:
     steps:
       - name: Checkout workflow files
         uses: actions/checkout@v4
-      - name: Import all workflow JSON files into disposable n8n 2.37.9
+      - name: Import all workflow JSON files into disposable n8n 2.44.6
         run: |
           set -euo pipefail
           docker run --rm \
             -v "$PWD/workflows:/workflows:ro" \
             -e N8N_ENCRYPTION_KEY=ci_dummy_key_never_used_in_prod \
-            n8nio/n8n:2.37.9 \
+            n8nio/n8n:2.44.6 \
             import:workflow --separate --input=/workflows
       - name: Report import success
         if: success()
-        run: echo "All repository workflows imported into disposable n8n 2.37.9 (not executed)." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "All repository workflows imported into disposable n8n 2.44.6 (not executed)." >> "$GITHUB_STEP_SUMMARY"
