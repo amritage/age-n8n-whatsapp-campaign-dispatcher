@@ -1,6 +1,6 @@
 # Chatwoot analytics investigation
 
-On 2026-10-24, the operator confirmed recipient-level campaign records in the Chatwoot PostgreSQL database. The analytics HTTP endpoint returned 401. A **replacement AGE 07** read-only PostgreSQL workflow is now committed and validated by automated tests, but **it is inactive, has no credentials and is not live-deployed**. Before production use, verify licensing, least-privilege credentials and AGE-to-Chatwoot mapping.
+On 2026-10-24, the operator confirmed recipient-level campaign records in the Chatwoot PostgreSQL database. The analytics HTTP endpoint returned 401. A **replacement AGE 07** read-only PostgreSQL workflow is committed, validated by automated tests and **successfully executed manually in the user's n8n on 24 October 2026 using a private PostgreSQL credential**. The workflow remains unscheduled, writes no CRM/Data Table data, and permanent Coolify networking is not yet verified. Before production use, verify licensing, least-privilege credentials and AGE-to-Chatwoot mapping.
 
 ## Confirmed database observations (operator-provided, read-only)
 
@@ -95,3 +95,9 @@ Safeguards: Keep the role's password only in secure n8n credentials, never GitHu
 - [AGE 07 Postgres read-only workflow](../workflows/age-07-delivery-read-analytics-native.json): replaces the feature-gated analytics API call, computes delivered-inclusive-Read and failure-code aggregates without personal contact data. Account 2 filter is explicit. Requires a SELECT-only n8n PostgreSQL credential with `campaigns`, `campaign_recipients`, and `inboxes` table access.
 - [AGE 07 unit fixtures](../tests/native-delivery-analytics.test.js) and [Postgres SQL fixture](../tests/chatwoot-postgres-analytics-sql.test.js). GitHub Actions covers import compatibility, JavaScript and actual SQL against synthetic PostgreSQL data; it does not connect to the live Chatwoot database.
 - [Current import checklist](SIMPLIFIED_THREE_WORKFLOW_DEPLOYMENT.md). Do not enable AGE 07's six-hour schedule until authorized manual comparison confirms expected counts and source behavior; Data Table/EspoCRM persistence remains separate future work.
+
+## Live validation milestone — 24 October 2026
+
+The operator ran the actual AGE 07 SQL node and Code validator in n8n **2.44.6**. For display campaign 2, it returned **910** recipients, **660 Delivered inclusive of 505 Read**, **247 Failed**, **3 sent-only**, valid `wamid.`-format IDs and corresponding timestamps. The 247 failure codes were `130472:10`, `131026:134`, `131049:103`. `readPctOfDelivered=76.52`. `status=SNAPSHOT_VALID` and `reasons=[]` for this campaign. Display campaign 1 has no recipient rows, returning `NO_RECIPIENT_EVIDENCE` and campaign-specific `PARTIAL`; hence the **overall workflow status is `PARTIAL` by design**, not because the main campaign failed or the query was incomplete. `scanComplete=true` and `reportCount=2`. The output explicitly confirms zero sends, zero CRM writes and zero Data Table writes.
+
+**Remaining:** Verify enduring connectivity through an approved Coolify network change and redeploy; run a PostgreSQL write-privilege audit; verify license terms; design/authorize EspoCRM mapping and Data Table persistence separately. See [live operator runbook](CHATWOOT_N8N_PRIVATE_NETWORK_RUNBOOK_2026-10-24.md).
