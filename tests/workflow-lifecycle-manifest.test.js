@@ -1,0 +1,35 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const dir=path.join(__dirname,'../workflows');
+const manifest=JSON.parse(fs.readFileSync(path.join(dir,'WORKFLOW_STATUS.json'),'utf8'));
+const files=fs.readdirSync(dir).filter(x=>x.endsWith('.json')&&x!=='WORKFLOW_STATUS.json').sort();
+assert.equal(files.length,22);
+assert.deepEqual(manifest.workflows.map(x=>x.file).sort(),files,'All workflow JSONs must be categorized');
+const count={};
+for(const entry of manifest.workflows){
+ const w=JSON.parse(fs.readFileSync(path.join(dir,entry.file),'utf8'));
+ assert.equal(w.active,false,'Workflow must remain inactive: '+entry.file);
+ assert(w.name.startsWith(entry.prefix+' '),'n8n-visible lifecycle name missing: '+entry.file);
+ assert(entry.purpose&&entry.action,'Incomplete registry entry: '+entry.file);
+ assert(!w.nodes.some(n=>n.credentials),'Credentials embedded in workflow: '+entry.file);
+ if(entry.status==='USE_NOW'){
+  assert(w.nodes.some(n=>n.type==='n8n-nodes-base.manualTrigger'));
+  assert(w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'));
+  assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.httpRequest'||n.type==='n8n-nodes-base.postgres'));
+  for(const n of w.nodes){
+   if(n.type.includes('chatwoot'))assert(['getAll','getMetrics','getRecipients'].includes(n.parameters.operation));
+   if(n.type.includes('espocrm'))assert.equal(n.parameters.operation,'getAll');
+   if(n.type==='n8n-nodes-base.dataTable')assert.equal(n.parameters.operation,'get');
+  }
+ }
+ if(entry.status==='OPTIONAL_SETUP'){
+  assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'));
+  assert(w.nodes.filter(n=>n.type==='n8n-nodes-base.dataTable').every(n=>n.parameters.operation==='create'));
+ }
+ if(entry.status==='DEV_ONLY')assert(w.nodes.some(n=>n.type==='n8n-nodes-base.executeWorkflowTrigger'));
+ count[entry.status]=(count[entry.status]||0)+1;
+}
+assert.equal(count.USE_NOW,2);assert.equal(count.OPTIONAL_SETUP,1);assert.equal(count.DEV_ONLY,1);
+assert.equal(files.length-count.USE_NOW-count.OPTIONAL_SETUP-count.DEV_ONLY,18);
+assert(fs.readFileSync(path.join(dir,'README.md'),'utf8').includes('22 workflow JSON files'));
+console.log('PASS: 22/22 workflows labeled, only 2 current read-only scheduled, optional setup, one dev reducer, 18 historic/alternative, all inactive');

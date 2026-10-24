@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-24",
+  "sourceOfTruth": true,
+  "allFilesInactive": true,
+  "statusMeaning": "USE_NOW means read-only diagnostic import, not live campaign sending",
+  "counts": {
+    "total": 22,
+    "useNow": 2,
+    "optionalSetup": 1,
+    "developmentOnly": 1,
+    "oldAlternativesAndShells": 18
+  },
+  "workflows": [
+    {
+      "file": "age-00-chatwoot-analytics-capability.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - REPLACED BY AGE 07]",
+      "purpose": "Capability probe superseded by AGE 07",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-01-espo-campaign-preflight.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - MERGED INTO UNIFIED]",
+      "purpose": "Stand-alone CRM preflight",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-02-portfolio-preflight-datatable.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - MERGED INTO UNIFIED]",
+      "purpose": "Stand-alone managed-table portfolio preflight",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-02-postgres-portfolio-preflight.json",
+      "status": "LEGACY_SQL",
+      "prefix": "[LEGACY SQL - DO NOT IMPORT]",
+      "purpose": "Old PostgreSQL portfolio preflight",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-03-chatwoot-evidence-readonly.json",
+      "status": "ADVANCED_SQL",
+      "prefix": "[ADVANCED SQL - NOT RECOMMENDED]",
+      "purpose": "Optional privileged read-only Chatwoot DB evidence audit",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-04-meta-error-watch-datatable.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - MERGED INTO UNIFIED]",
+      "purpose": "Stand-alone error monitor",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-04-meta-error-watch.json",
+      "status": "LEGACY_SQL",
+      "prefix": "[LEGACY SQL - DO NOT IMPORT]",
+      "purpose": "Old PostgreSQL error monitor",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-05-operations-dashboard-datatable.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - MERGED INTO UNIFIED]",
+      "purpose": "Stand-alone operations dashboard",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-05-operations-dashboard.json",
+      "status": "LEGACY_SQL",
+      "prefix": "[LEGACY SQL - DO NOT IMPORT]",
+      "purpose": "Old PostgreSQL dashboard",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-06-global-cycle-dry-run-datatable.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - MERGED INTO UNIFIED]",
+      "purpose": "Stand-alone global dry run",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-06-global-cycle-dry-run.json",
+      "status": "LEGACY_SQL",
+      "prefix": "[LEGACY SQL - DO NOT IMPORT]",
+      "purpose": "Old PostgreSQL dry run",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-07-delivery-read-analytics-native.json",
+      "status": "USE_NOW",
+      "prefix": "[USE NOW - READ ONLY]",
+      "purpose": "Six-hour campaign-level Delivered/Read/error analytics",
+      "action": "Import; test entitlement manually; schedule only if supported"
+    },
+    {
+      "file": "age-08-verified-message-evidence-reducer.json",
+      "status": "DEV_ONLY",
+      "prefix": "[DEV ONLY - NOT CONNECTED]",
+      "purpose": "Within-invocation provider evidence reducer",
+      "action": "Do not deploy alone; no verified event input or persistent CRM sync"
+    },
+    {
+      "file": "age-api-readiness-native.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - REPLACED BY UNIFIED]",
+      "purpose": "Earlier native Chatwoot/Espo inventory",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-api-readiness-readonly.json",
+      "status": "LEGACY_HTTP",
+      "prefix": "[OLD HTTP - DO NOT IMPORT]",
+      "purpose": "Earlier generic HTTP API check",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-chatwoot-campaign-reconciliation.json",
+      "status": "DESIGN_ONLY",
+      "prefix": "[DESIGN SHELL - NOT RUNNABLE]",
+      "purpose": "Unfinished reconciliation design shell",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-chatwoot-find-campaign-ids-readonly.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - AUTO DISCOVERY IN AGE 07]",
+      "purpose": "Obsolete manual campaign lookup",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-chatwoot-recipient-report-native.json",
+      "status": "SUPERSEDED",
+      "prefix": "[OLD - REPLACED BY AGE 07]",
+      "purpose": "Earlier native recipient report",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-chatwoot-recipient-report-readonly.json",
+      "status": "LEGACY_HTTP",
+      "prefix": "[OLD HTTP - DO NOT IMPORT]",
+      "purpose": "Earlier generic HTTP recipient report",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-dt-setup-managed-tables.json",
+      "status": "OPTIONAL_SETUP",
+      "prefix": "[OPTIONAL SETUP - MANUAL]",
+      "purpose": "One-time native n8n Data Tables creator",
+      "action": "Only if tables were not created correctly by CSV import"
+    },
+    {
+      "file": "age-multi-campaign-cycle-controller.json",
+      "status": "DESIGN_ONLY",
+      "prefix": "[DESIGN SHELL - NOT RUNNABLE]",
+      "purpose": "Unfinished multi-campaign sender design shell",
+      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+    },
+    {
+      "file": "age-unified-six-hour-health-readonly.json",
+      "status": "USE_NOW",
+      "prefix": "[USE NOW - READ ONLY]",
+      "purpose": "Six-hour cross-system diagnostic",
+      "action": "Import; test manually before enabling its schedule"
+    }
+  ]
+}
