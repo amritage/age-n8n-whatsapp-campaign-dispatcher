@@ -155,6 +155,18 @@ The workflow reported `sends:0`, `crmEventWrites:0`, `dataTableWrites:0`, `mappi
 4. **After persistent change:** Repeat credential check and manual AGE 07 execution. Confirm output still matches a fresh database snapshot; verify both n8n main and worker connectivity. Only then consider the six-hour schedule, assuming access/licensing approval.
 5. **Business functionality still absent:** Data Table persistence, exact recipient/attempt mapping, and idempotent EspoCRM updates have not been developed/authorized in the current AGE 07. Do not claim full WhatsApp-to-EspoCRM reconciliation.
 
+## Coolify 4.5.0 General-screen confirmation — 2026-10-24
+
+Operator screenshot confirms the live Chatwoot **Service → General → Network → Network attachment** dropdown currently displays **`Use the stack network only`**. The same screen shows Chatwoot, Sidekiq, PostgreSQL and Redis as healthy. This identifies the exact *persisted resource configuration* responsible for the current isolation, even though the temporary Docker attachment already allowed a successful AGE 07 manual run.
+
+Verified from current Coolify documentation and implementation: the alternative entry is **`Connect to the predefined Coolify network`**. Selecting it changes the saved service definition; the network change is realized when Coolify recreates/redeploys the stack. The original per-service stack network remains attached. The default predefined destination network is **`coolify`**, currently shared with n8n. Check the selected deployment destination and the generated Compose before restarting.
+
+**Security tradeoff:** This built-in option is easy to maintain and normally survives subsequent Coolify-controlled redeploys, but it adds **the entire Chatwoot stack including PostgreSQL** to the shared `coolify` network. Other containers on that network gain network-level reachability; PostgreSQL password, least-privilege grants, and not publishing port 5432 remain essential. If strict isolation is needed, review dedicated Compose network design instead of using the shared destination network. Do not modify running production services without a tested restorable database backup.
+
+**Recommended controlled change (not yet performed):** verify the Postgres persistent storage and a restorable backup (Coolify `Persistent Storage` and `Backups`), then change the dropdown to **Connect to the predefined Coolify network**, review **Show Deployable Compose**, and after an approved maintenance window use **Restart current version** (not `Pull Latest`). Confirm healthy components, shared network membership, n8n main and worker DNS connectivity, credential connection, and rerun the read-only AGE 07 comparison. Only then consider the temporary manual network attachments superseded.
+
+**Status: PENDING operator selection, backup verification, controlled redeploy, and post-redeploy acceptance.** Seeing the dropdown alone does not mean persistence has been configured.
+
 ## Operator log — update with evidence, not assumptions
 
 | Date | Action | Result |
@@ -168,6 +180,7 @@ The workflow reported `sends:0`, `crmEventWrites:0`, `dataTableWrites:0`, `mappi
 | PENDING | Verify worker network membership and TCP | NOT YET VERIFIED |
 | 2026-10-24 | PostgreSQL SELECT permission validation | **Verified functionally:** live AGE 07 query successfully SELECTed `campaigns`, `campaign_recipients`, and `inboxes` as credential `age_chatwoot_analytics_ro`; explicit write-permission denial test still pending |
 | 2026-10-24 | n8n credential 'Chatwoot Postgres' using read-only username | VERIFIED via screenshot: **Connection tested successfully**; screenshot does not prove SELECT permissions or workflow execution |
+| 2026-10-24 | Chatwoot Coolify 4.5.0 network attachment inspected | VERIFIED screenshot: currently `Use the stack network only`; alternative `Connect to the predefined Coolify network` identified but **not yet selected** |
 | PENDING | Approved durable Coolify network configuration | NOT YET VERIFIED |
 | 2026-10-24 | AGE 07 live manual execution | VERIFIED: campaign 2 `SNAPSHOT_VALID`, all 910 rows reconcile and 247 failure codes sum; campaign 1 has no rows, causing **expected overall `PARTIAL`**, not a query failure |
 
