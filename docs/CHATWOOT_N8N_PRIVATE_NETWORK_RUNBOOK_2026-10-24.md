@@ -11,6 +11,10 @@
 **Next high-ROI action:** Make the already-working n8n main and worker private network membership persistent through Coolify's saved service/Compose configuration, **without changing the Chatwoot Service's network attachment again**. Review existing Compose and storage backups before any n8n redeploy. Separately audit the DB role's missing write privileges with a SELECT of `pg_roles` and `has_table_privilege`; do not run any SQL writes for the privilege test.
 
 
+### Coolify known networking issue (context only; NOT a confirmed diagnosis)
+
+The Coolify issue [#11295, “Connect to Predefined Network” startup/health-dependency deadlock](https://github.com/coollabsio/coolify/issues/11295) describes a case in 2026 where predefined-network attachment occurs after Compose startup; a health-gated dependency may fail first. This **could be relevant to the earlier Sidekiq crash loop**, but the Chatwoot exception text was unavailable and the bug has **not** been verified as the cause on this VPS. Treat it as an engineering reason to avoid re-enabling predefined shared networking for the Chatwoot stack. Official [Coolify Service networking documentation](https://coolify.io/docs/services/configuration/networking) and [Docker Compose external networks guidance](https://docs.docker.com/compose/how-tos/networking/) support explicit shared-network design after reviewing full Compose definitions.
+
 ## Post-restart verification — 24 October 2026 (operator-provided Docker output)
 
 **Verified after Chatwoot restart:** All four containers are `Up 4 minutes (healthy)` at the time of inspection: `chatwoot`, `sidekiq`, `postgres`, and `redis` under `au4akmkdy3bkd76n7m0ay0ky`. Chatwoot's stack is now **only** on its resource-specific network.
