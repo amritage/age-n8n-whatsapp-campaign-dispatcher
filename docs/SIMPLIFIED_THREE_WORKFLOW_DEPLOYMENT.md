@@ -1,6 +1,6 @@
 # Current n8n import guide — 2 monitors + optional setup
 
-**Updated 24 October 2026** · Target n8n 2.37.9 queue mode · Chatwoot v4.19.0 · EspoCRM.  
+**Updated 24 October 2026** · Installed n8n now observed at 2.44.6 queue mode · Chatwoot v4.19.0 · EspoCRM.  
 **This replaces the older 3-workflow / 7-workflow recommendations.** The current authority is [the 22-workflow inventory](../workflows/README.md). No existing deployed n8n workflows are changed by GitHub edits.
 
 ## Exactly what to import
@@ -37,7 +37,11 @@
 
 See [the source-verified 24-Oct reconciliation handoff](RECONCILIATION_WORKFLOWS_2026-10-24.md) and [Meta status reconciliation acceptance criteria](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md).
 
-## Coolify → n8n: connection and first-run verification (added 24 October)
+## Coolify → n8n: connection and first-run verification
+
+**Observed 24 October 2026:** n8n main and worker have versions 2.44.6 and belong to both `coolify` and `l11w6qi16cakcn9f855wbbk1` Docker networks. Chatwoot PostgreSQL `postgres-au4akmkdy3bkd76n7m0ay0ky` belongs only to `au4akmkdy3bkd76n7m0ay0ky`. Therefore a private network connection is needed **before** the n8n PostgreSQL credential can work. For a non-disruptive temporary test, attach the **n8n main and worker** containers to the Chatwoot network via Docker's `network connect`, test host lookup/TCP access, and then preserve the desired topology in Coolify's persistent service configuration. Direct network attachments are **lost on container re-creation**; do not regard a successful one-off test as lasting configuration. Prefer minimal network exposure and do not publish PostgreSQL ports.
+
+ (added 24 October)
 
 **After the operator has granted SELECT on `public.inboxes`:** do not assume the new role has the other privileges or that the n8n container can reach Chatwoot PostgreSQL. Check permissions **without returning any customer records** in the existing Coolify PostgreSQL terminal:
 
