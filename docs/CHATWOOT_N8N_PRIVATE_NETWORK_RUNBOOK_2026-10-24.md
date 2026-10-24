@@ -1,5 +1,20 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Operator follow-up — 24 October 2026: preview step reported done, generated configuration not yet inspected
+
+The operator reports 'done' after being instructed to open **Preview Generated Compose**. This does **not** independently verify whether the preview generated successfully, whether changes were saved/redeployed, or whether the generated Compose retains the correct network routes. **Do not mark persistent networking complete based on this message alone.**
+
+**Pre-save gate:** In the Preview Generated Compose, confirm these facts and inspect for any validation error:
+
+- `n8n` and `n8n-worker` have the original internal n8n network plus the additional `chatwoot_private` external network. Source `default` must map to the original n8n resource network, not a newly disconnected network.
+- `postgresql`, `redis`, `task-runners`, `sandbox-api` and sandbox services still share their necessary existing internal connections. Preserve n8n's public proxy network, especially `coolify`, if required by the generated deployment.
+- Top-level `chatwoot_private` is external with `name: au4akmkdy3bkd76n7m0ay0ky`. The existing volume names, service dependency configuration, and image versions are unchanged.
+- No duplicate YAML keys, invalid nested `networks`, `undefined network`, or missing network mapping.
+
+**If and only if verified:** save source Compose, schedule a controlled **n8n-only** deployment/recreation (not Chatwoot; no image upgrade), then check `docker ps`, actual network memberships, n8n HTTPS/worker/Redis health, and manually re-execute AGE 07. The short-lived n8n outage caused by recreation is a real possibility. Do not change the Chatwoot network attachment.
+
+**Open gate:** User has not yet provided the preview output or indicated clearly whether Save/Deploy occurred.
+
 ## Coolify bottom-of-file screenshot review — 24 October 2026 at approximately 20:04 IST
 
 Screenshot of Coolify's n8n Compose editor at lines 222–225 **confirms a syntactically well-indented root-level external network declaration**:
