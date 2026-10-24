@@ -1,6 +1,6 @@
 # Chatwoot analytics investigation
 
-On 2026-10-24, the operator confirmed recipient-level campaign records in the Chatwoot PostgreSQL database. The analytics HTTP endpoint returned 401. Before implementing a production integration, verify data mappings, least-privilege access, and applicable license terms. Existing workflows remain unchanged.
+On 2026-10-24, the operator confirmed recipient-level campaign records in the Chatwoot PostgreSQL database. The analytics HTTP endpoint returned 401. A **replacement AGE 07** read-only PostgreSQL workflow is now committed and validated by automated tests, but **it is inactive, has no credentials and is not live-deployed**. Before production use, verify licensing, least-privilege credentials and AGE-to-Chatwoot mapping.
 
 ## Confirmed database observations (operator-provided, read-only)
 
@@ -62,3 +62,9 @@ The existing AGE 07 diagnostic calls the Enterprise analytics endpoint, which re
 A future implementation may evaluate an authorized read-only PostgreSQL source, using a dedicated SELECT-only role, private Coolify networking, pagination, incremental checkpoints, overlap and idempotent replay. Verify Chatwoot-to-EspoCRM campaign/recipient/attempt mappings, raw Meta identity, data freshness, and license entitlement before use. Reading an Enterprise-associated table does not by itself establish authorization to use a paid feature. Compact metrics/checkpoints can go into n8n Data Tables; recipient-level history belongs in appropriately restricted records.
 
 Relevant upstream references: `chatwoot/chatwoot` v4.19.0 `db/schema.rb`, `enterprise/app/models/campaign_recipient.rb`, and `enterprise/app/controllers/api/v1/accounts/campaigns/analytics_controller.rb`.
+
+## Current implementation files (updated 24 October)
+
+- [AGE 07 Postgres read-only workflow](../workflows/age-07-delivery-read-analytics-native.json): replaces the feature-gated analytics API call, computes delivered-inclusive-Read and failure-code aggregates without personal contact data. Account 2 filter is explicit. Requires a SELECT-only n8n PostgreSQL credential with `campaigns`, `campaign_recipients`, and `inboxes` table access.
+- [AGE 07 unit fixtures](../tests/native-delivery-analytics.test.js) and [Postgres SQL fixture](../tests/chatwoot-postgres-analytics-sql.test.js). GitHub Actions covers import compatibility, JavaScript and actual SQL against synthetic PostgreSQL data; it does not connect to the live Chatwoot database.
+- [Current import checklist](SIMPLIFIED_THREE_WORKFLOW_DEPLOYMENT.md). Do not enable AGE 07's six-hour schedule until authorized manual comparison confirms expected counts and source behavior; Data Table/EspoCRM persistence remains separate future work.
