@@ -93,8 +93,8 @@
       "file": "age-07-delivery-read-analytics-native.json",
       "status": "USE_NOW",
       "prefix": "[USE NOW - READ ONLY]",
-      "purpose": "Six-hour campaign-level Delivered/Read/error analytics",
-      "action": "Import; test entitlement manually; schedule only if supported"
+      "purpose": "Account-2 scoped Chatwoot PostgreSQL one-off WhatsApp Delivered/Read/error snapshot; no PII",
+      "action": "Import inactive for licensed SELECT-only PostgreSQL pilot; validate account 2 counts; no schedule or CRM writes before approval"
     },
     {
       "file": "age-08-verified-message-evidence-reducer.json",
