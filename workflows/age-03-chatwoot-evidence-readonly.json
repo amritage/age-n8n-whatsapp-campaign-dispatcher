@@ -1,6 +1,6 @@
 {
-  "id": "AGEwf03Evidence26V",
-  "name": "[ADVANCED SQL - NOT RECOMMENDED] AGE 03 - Chatwoot v4.19 Read-Only Database Evidence Audit",
+  "id": "AGE03-recipient-snapshot-page-v2",
+  "name": "[DEV ONLY - READ ONLY] AGE 03 - Chatwoot Recipient Message Evidence Page (No Writes)",
   "active": false,
   "settings": {
     "executionOrder": "v1",
@@ -12,68 +12,63 @@
   },
   "nodes": [
     {
-      "id": "af030000-0000-4000-8000-000000000001",
+      "id": "age03-manual",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "parameters": {},
       "position": [
-        180,
-        200
-      ]
+        220,
+        220
+      ],
+      "parameters": {}
     },
     {
-      "id": "af030000-0000-4000-8000-000000000002",
-      "name": "Schedule - Every 6 Hours (Inactive Until Enabled)",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 6
-            }
-          ]
-        }
-      },
-      "position": [
-        180,
-        400
-      ]
-    },
-    {
-      "id": "af030000-0000-4000-8000-000000000003",
-      "name": "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
+      "id": "age03-config",
+      "name": "Configure Account and Keyset Cursor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         460,
-        300
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Configure AGE 03 manually before each page; never run as a sender.\n// Keyset page is sorted by Chatwoot recipient updated_at ASC, id ASC.\n// For the first page use epoch/id zero; for next page paste nextCursor.\nconst p={chatwootAccountId:2,afterUpdatedAt:'1970-01-01T00:00:00.000Z',\n  afterRowId:'0',pageSize:250};\nif(!Number.isSafeInteger(p.chatwootAccountId)||p.chatwootAccountId<1)throw Error('INVALID_ACCOUNT_ID');\nif(!Number.isSafeInteger(p.pageSize)||p.pageSize<1||p.pageSize>500)throw Error('INVALID_PAGE_SIZE');\nif(!Number.isFinite(Date.parse(p.afterUpdatedAt))||!/Z$/.test(p.afterUpdatedAt))throw Error('CURSOR_MUST_BE_UTC_ISO');\nif(!/^(0|[1-9]\\d*)$/.test(String(p.afterRowId)))throw Error('CURSOR_ROW_ID_MUST_BE_DECIMAL');\nreturn [{json:p}];"
+      }
+    },
+    {
+      "id": "age03-query",
+      "name": "Chatwoot PostgreSQL - Read Recipient Page",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        720,
+        220
       ],
       "continueOnFail": true,
       "alwaysOutputData": true,
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- STRICT READ ONLY: use dedicated Chatwoot SELECT-only database role.\n-- Chatwoot Enterprise v4.19 campaign_recipients.status is integer 0..5.\nSELECT c.account_id, c.display_id AS campaign_display_id,\n       COUNT(*)::integer AS audience,\n       COUNT(*) FILTER (WHERE cr.status=0)::integer AS queued,\n       COUNT(*) FILTER (WHERE cr.status=1)::integer AS skipped,\n       COUNT(*) FILTER (WHERE cr.status=2)::integer AS sent,\n       COUNT(*) FILTER (WHERE cr.status=3)::integer AS delivered,\n       COUNT(*) FILTER (WHERE cr.status=4)::integer AS read,\n       COUNT(*) FILTER (WHERE cr.status=5)::integer AS failed,\n       COUNT(*) FILTER (WHERE cr.source_id LIKE 'wamid.%')::integer AS candidate_wamid_count,\n       COUNT(*) FILTER (WHERE cr.status=5 AND cr.error_code='131050')::integer AS marketing_optout_count,\n       MAX(cr.updated_at) AS last_event_update\nFROM campaign_recipients cr\nJOIN campaigns c ON c.id=cr.campaign_id AND c.account_id=cr.account_id\nWHERE cr.updated_at >= now()-interval '14 days'\n  AND c.campaign_type=1\nGROUP BY c.account_id, c.display_id\nORDER BY MAX(cr.updated_at) DESC LIMIT 201;",
+        "query": "-- AGE 03 manual read-only recipient page, account scope+WhatsApp inbox.\n-- Query is parameterized: never interpolate destination or cursor into SQL.\n-- Scope is current Chatwoot snapshots, NOT Meta event log or AGE attempt history.\nSELECT c.account_id, c.id AS internal_campaign_id,\n       c.display_id AS campaign_display_id, c.title AS campaign_name,\n       c.inbox_id,\n       cr.id AS recipient_row_id, cr.contact_id,\n       cr.contact_inbox_id, ct.phone_number AS current_mobile_number,\n       cr.source_id AS provider_message_id, cr.status AS message_status,\n       cr.sent_at, cr.delivered_at, cr.read_at, cr.failed_at,\n       cr.error_code, cr.error_title, cr.error_message,\n       cr.updated_at AS recipient_updated_at\nFROM campaign_recipients cr\nJOIN campaigns c ON c.id=cr.campaign_id AND c.account_id=cr.account_id\nJOIN inboxes i ON i.id=c.inbox_id AND i.account_id=c.account_id\n  AND i.channel_type='Channel::Whatsapp'\nLEFT JOIN contacts ct ON ct.id=cr.contact_id AND ct.account_id=cr.account_id\nWHERE c.account_id=$1::bigint AND c.campaign_type=1\n  AND (cr.updated_at,cr.id) > ($2::timestamp,$3::bigint)\nORDER BY cr.updated_at ASC,cr.id ASC\nLIMIT ($4::integer+1);",
         "options": {
           "queryBatching": "single",
+          "queryReplacement": "={{ [$json.chatwootAccountId, $json.afterUpdatedAt, $json.afterRowId, $json.pageSize] }}",
           "largeNumbersOutput": "text"
         }
       }
     },
     {
-      "id": "af030000-0000-4000-8000-000000000004",
-      "name": "Validate Provider Evidence Without CRM Writes",
+      "id": "age03-validate",
+      "name": "Validate Recipient Evidence and Report Unmatched",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        740,
-        300
+        1020,
+        220
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Provider Meta message ID semantics cannot be assumed from matching a wamid prefix.\nconst raw=$input.all().map(x=>x.json).filter(x=>x&&Object.keys(x).length);\nif(raw.some(x=>x.error))return [{json:{mode:'READ_ONLY',result:'BLOCKED',\n reason:'CHATWOOT_ENTERPRISE_RECIPIENT_TABLE_OR_SELECT_PERMISSION_UNAVAILABLE',crmEventWriteAuthorized:false}}];\nif(raw.length>200)throw Error('EVIDENCE_QUERY_LIMIT_REACHED_REFINE_TIME_WINDOW');\nconst out=raw.map(r=>{\n const statuses={queued:Number(r.queued)||0,skipped:Number(r.skipped)||0,\n  sent:Number(r.sent)||0,delivered:Number(r.delivered)||0,read:Number(r.read)||0,failed:Number(r.failed)||0};\n const n=Number(r.audience)||0;\n if(Object.values(statuses).reduce((a,b)=>a+b,0)!==n)throw Error('CHATWOOT_STATUS_TOTAL_MISMATCH');\n return {accountId:r.account_id,campaignDisplayId:r.campaign_display_id,audience:n,\n  counts:statuses,candidateWamidCount:Number(r.candidate_wamid_count)||0,\n  marketingOptOutFailures:Number(r.marketing_optout_count)||0,lastUpdate:r.last_event_update};\n});\nreturn [{json:{checkedAt:new Date().toISOString(),mode:'READ_ONLY',result:out.length?'EVIDENCE_CANDIDATES':'NO_DATA',\n reports:out,providerMessageIdSemanticsVerified:false,crmAttemptMappingVerified:false,\n crmEventWriteAuthorized:false,note:'Database candidate WAMIDs and event timestamps still require exact reconciliation to AGE attempt IDs.'}}];"
+        "jsCode": "// AGE 03 read-only page inspection; no API calls/sends/CRM writes.\n// In n8n, this output contains sensitive recipient identifiers: private execution only.\nconst raw=$input.all().map(x=>x.json||{});\nconst params=$('Configure Account and Keyset Cursor').first().json;\nconst limit=Number(params.pageSize);\nconst base={source:'CHATWOOT_POSTGRES_CURRENT_RECIPIENT_SNAPSHOT',mode:'READ_ONLY',\n  checkedAt:new Date().toISOString(),chatwootAccountId:params.chatwootAccountId,\n  requestedAfter:{updatedAt:params.afterUpdatedAt,rowId:String(params.afterRowId)},\n  pageSize:limit,sends:0,espocrmWrites:0,dataTableWrites:0,\n  mappingsVerified:false,providerProvenanceIndependentlyVerified:false,\n  licensePermissionVerified:false,fullAttemptHistory:false};\nif(raw.some(r=>r.error||r.message?.includes?.('permission denied'))){\n  return [{json:{...base,status:'BLOCKED',reason:'POSTGRES_QUERY_FAILED_OR_ACCESS_DENIED',\n    nextCursor:null,records:[],note:'Database access error: inspect node without copying any secrets.'}}];\n}\nconst data=raw.filter(r=>r.recipient_row_id!==undefined&&r.recipient_row_id!==null);\nif(raw.length>0&&data.length!==raw.filter(r=>Object.keys(r).length>0).length)\n  return [{json:{...base,status:'BLOCKED',reason:'QUERY_RESPONSE_SCHEMA_MISMATCH',nextCursor:null,records:[]}}];\nconst hasMore=data.length>limit;\nconst page=data.slice(0,limit);\nconst warnings=[],records=[],seen=new Set();\nconst normalPhone=(s)=>{const v=String(s||'').trim();const digits=v.replace(/\\D/g,'');\n  return digits.length>=8&&digits.length<=15?digits:null;};\nconst numericString=(v)=>{const x=String(v??'');if(!/^[0-9]+$/.test(x))throw Error('INVALID_ID');return x;};\nconst time=(v)=>{if(!v)return null;const ms=Date.parse(String(v));\n  return Number.isFinite(ms)?new Date(ms).toISOString():null;};\nfor(const r of page){\n const reasons=[];\n let id,contact,campaign,account,inbox,st;\n try {id=numericString(r.recipient_row_id);\n   contact=numericString(r.contact_id);\n   campaign=numericString(r.internal_campaign_id);\n   account=numericString(r.account_id);\n   inbox=numericString(r.inbox_id);\n   st=Number(r.message_status);\n }catch(e){return [{json:{...base,status:'BLOCKED',reason:'INVALID_PRIMARY_KEY',records:[],nextCursor:null}}];}\n const key=account+'|'+campaign+'|'+id;\n if(seen.has(key))return [{json:{...base,status:'BLOCKED',reason:'DUPLICATED_RECIPIENT_ROW',records:[],nextCursor:null}}];\n seen.add(key);\n if(account!==String(params.chatwootAccountId))return [{json:{...base,status:'BLOCKED',reason:'ACCOUNT_MISMATCH',records:[],nextCursor:null}}];\n if(!Number.isInteger(st)||st<0||st>5)return [{json:{...base,status:'BLOCKED',reason:'INVALID_STATUS',records:[],nextCursor:null}}];\n const source=String(r.provider_message_id||'').trim();\n const formatValid=/^wamid\\.[A-Za-z0-9_=.\\-]+$/.test(source);\n const mobile=normalPhone(r.current_mobile_number);\n const at={sent:time(r.sent_at),delivered:time(r.delivered_at),\n   read:time(r.read_at),failed:time(r.failed_at),updated:time(r.recipient_updated_at)};\n if(!at.updated)return [{json:{...base,status:'BLOCKED',reason:'INVALID_CURSOR_TIMESTAMP',records:[],nextCursor:null}}];\n if(!formatValid)reasons.push('MISSING_OR_INVALID_WAMID_FORMAT');\n if(!mobile)reasons.push('MISSING_CURRENT_MOBILE');\n if(st===4&&!at.read)reasons.push('MISSING_READ_TIMESTAMP');\n if((st===3||st===4)&&!at.delivered)reasons.push('MISSING_DELIVERY_TIMESTAMP');\n if(st===5&&!at.failed)reasons.push('MISSING_FAILURE_TIMESTAMP');\n if(st===5&&!String(r.error_code||'').trim())reasons.push('MISSING_META_ERROR_CODE');\n if(st===5&&formatValid)reasons.push('FAILED_MESSAGE_HAS_SOURCE_ID_VERIFY_EVENT');\n const states=['QUEUED','SKIPPED','SENT','DELIVERED','READ','FAILED'];\n const row={\n  chatwootAccountId:account,chatwootCampaignInternalId:campaign,\n  chatwootCampaignDisplayId:r.campaign_display_id,chatwootCampaignName:r.campaign_name,\n  chatwootInboxId:inbox,chatwootContactId:contact,\n  chatwootContactInboxId:r.contact_inbox_id==null?null:String(r.contact_inbox_id),\n  chatwootRecipientRowId:id,currentMobileDigits:mobile,\n  providerMessageId:source||null,providerIdFormatValid:formatValid,\n  status:states[st],deliveredConfirmed:st===3||st===4,readConfirmed:st===4,\n  timestamps:at,errorCode:r.error_code==null?null:String(r.error_code),\n  errorTitle:r.error_title==null?null:String(r.error_title),\n  errorMessage:r.error_message==null?null:String(r.error_message),\n  candidateMatchKey:account+'|'+campaign+'|'+contact+'|'+source,\n  mappingStatus:'UNMATCHED',espocrmCampaignId:null,espocrmRecipientId:null,\n  espocrmAttemptId:null,canWriteEspocrm:false,\n  evidenceSource:'CHATWOOT_CURRENT_STATE_NOT_PROVIDER_EVENT_LOG',\n  warnings:reasons};\n if(reasons.length)warnings.push({recipientRowId:id,codes:reasons});\n records.push(row);\n}\nconst last=page[page.length-1];\nconst cursor=last?{updatedAt:records[records.length-1].timestamps.updated,\n  rowId:String(last.recipient_row_id)}:null;\nconst nextCursor=hasMore?cursor:null;\nreturn [{json:{...base,status:warnings.length?'PARTIAL_EVIDENCE':'PAGE_READ',\n  pageRecordCount:records.length,hasMore,nextCursor,lastPageCursor:cursor,\n  truncatedByPageSize:hasMore,warningCount:warnings.length,warnings,\n  records,note:'Recipient-level current snapshot for private n8n review; not yet matched to authoritative EspoCRM attempt IDs. Update Configure Account and Keyset Cursor to request next page. Never treat current contact mobile as historical sent-to proof.'}}];"
       }
     }
   ],
@@ -82,29 +77,29 @@
       "main": [
         [
           {
-            "node": "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence",
+            "node": "Configure Account and Keyset Cursor",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Schedule - Every 6 Hours (Inactive Until Enabled)": {
+    "Configure Account and Keyset Cursor": {
       "main": [
         [
           {
-            "node": "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence",
+            "node": "Chatwoot PostgreSQL - Read Recipient Page",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Chatwoot PostgreSQL - Aggregate Candidate Provider Evidence": {
+    "Chatwoot PostgreSQL - Read Recipient Page": {
       "main": [
         [
           {
-            "node": "Validate Provider Evidence Without CRM Writes",
+            "node": "Validate Recipient Evidence and Report Unmatched",
             "type": "main",
             "index": 0
           }
@@ -114,6 +109,7 @@
   },
   "pinData": {},
   "meta": {
-    "templateCredsSetupCompleted": false
+    "templateCredsSetupCompleted": false,
+    "notes": "Development-only/manual account-2 SELECT; cursor must be advanced manually; no user IDs, credentials, sends or write mappings."
   }
 }
