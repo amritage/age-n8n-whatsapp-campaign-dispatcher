@@ -32,6 +32,8 @@ jobs:
         run: node tests/cycle-planner.test.js
       - name: Check 131049 schedule, analytics and read-only connectivity
         run: node tests/integration-contract.test.js
+      - name: Verify authoritative recipient and attempt mapping is fail-closed
+        run: node tests/recipient-outcome-candidates.test.js
       - name: Verify provider evidence mapping safeguards
         run: node tests/evidence-mapper.test.js
       - name: Check real EspoCRM field mapping and guarded Chatwoot payload
