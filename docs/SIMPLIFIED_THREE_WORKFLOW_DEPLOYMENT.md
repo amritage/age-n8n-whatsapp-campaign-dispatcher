@@ -37,6 +37,8 @@
 
 See [the source-verified 24-Oct reconciliation handoff](RECONCILIATION_WORKFLOWS_2026-10-24.md) and [Meta status reconciliation acceptance criteria](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md).
 
+> **CURRENT BLOCKER — screenshot verified 24 Oct 2026:** n8n Postgres credential returns `getaddrinfo EAI_AGAIN postgres-au4akmkdy3bkd76n7m0ay0ky` because Chatwoot DB and n8n are on separate Docker networks. Follow the [stage-by-stage private-network rollout log](CHATWOOT_N8N_PRIVATE_NETWORK_RUNBOOK_2026-10-24.md) before credential testing. The `inboxes` SELECT grant was confirmed, but other grants and successful n8n login have not yet been verified.
+
 ## Coolify → n8n: connection and first-run verification
 
 **Observed 24 October 2026:** n8n main and worker have versions 2.44.6 and belong to both `coolify` and `l11w6qi16cakcn9f855wbbk1` Docker networks. Chatwoot PostgreSQL `postgres-au4akmkdy3bkd76n7m0ay0ky` belongs only to `au4akmkdy3bkd76n7m0ay0ky`. Therefore a private network connection is needed **before** the n8n PostgreSQL credential can work. For a non-disruptive temporary test, attach the **n8n main and worker** containers to the Chatwoot network via Docker's `network connect`, test host lookup/TCP access, and then preserve the desired topology in Coolify's persistent service configuration. Direct network attachments are **lost on container re-creation**; do not regard a successful one-off test as lasting configuration. Prefer minimal network exposure and do not publish PostgreSQL ports.
