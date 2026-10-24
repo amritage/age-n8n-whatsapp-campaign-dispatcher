@@ -2,6 +2,10 @@
 
 Status: **approved architecture; implementation NOT deployed or proven live**. This document supersedes individual-message dispatcher assumptions for this integration. Never patch/fork Chatwoot.
 
+## Mandatory delivery/Read reconciliation rule (24 October 2026)
+
+Follow the [approved campaign delivery and analytics requirements](WHATSAPP_CAMPAIGN_DELIVERY_RECONCILIATION_REQUIREMENTS.md) for **all** native Chatwoot/Meta WhatsApp campaign batches. Confirmed **Read** is proof of delivery for the *same message* and MUST be counted **exactly once** in delivered-inclusive totals. Read is a separately reported subset, not an extra delivery; do not fabricate deliveredAt from readAt. Preserve exact Meta errors, source identities and original provider event times, and reconcile late/out-of-order events to their EspoCRM attempt. Collect Read at no additional paid-service/API overhead wherever the existing system exposes it. This requirement is not met yet by read-only diagnostics.
+
 ## Decisions (21 Oct 2026)
 - **One** logical EspoCRM campaign can produce many immutable **one-off Chatwoot campaigns**. No separate n8n workflow per business campaign.
 - EspoCRM owns AudienceSegments, Contact/Account/Lead membership, consent/suppression, recipient history, campaign status, selected templates, dates, weekdays, timezone, window, priority, and per-recipient retry policy.
