@@ -3,13 +3,13 @@
   "updatedAt": "2026-10-24",
   "sourceOfTruth": true,
   "allFilesInactive": true,
-  "statusMeaning": "USE_NOW means read-only diagnostic import, not live campaign sending",
+  "statusMeaning": "USE_NOW means read-only diagnostic import; AGE 03 is a DEV_ONLY sensitive-recipient manual diagnostic, not a live CRM sync or sender",
   "counts": {
     "total": 22,
     "useNow": 2,
     "optionalSetup": 1,
-    "developmentOnly": 1,
-    "oldAlternativesAndShells": 18
+    "developmentOnly": 2,
+    "oldAlternativesAndShells": 17
   },
   "workflows": [
     {
@@ -42,10 +42,10 @@
     },
     {
       "file": "age-03-chatwoot-evidence-readonly.json",
-      "status": "ADVANCED_SQL",
-      "prefix": "[ADVANCED SQL - NOT RECOMMENDED]",
-      "purpose": "Optional privileged read-only Chatwoot DB evidence audit",
-      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+      "status": "DEV_ONLY",
+      "prefix": "[DEV ONLY - READ ONLY]",
+      "purpose": "Account-2 Chatwoot recipient-level mobile/wamid/status/timestamps/errors keyset page; manual only, no writes or verified EspoCRM attempt mapping",
+      "action": "Manual private diagnostic import AFTER licensed access check and SELECT grants incl contacts; configure cursor, attach private Postgres credential, DO NOT PUBLISH/SCHEDULE"
     },
     {
       "file": "age-04-meta-error-watch-datatable.json",
