@@ -2,6 +2,8 @@
 
 **Status (24 October 2026):** Workflow and synthetic tests committed; **no live AGE 03 test or CRM write enabled**. This reuses one of the existing **22** workflow files. AGE 07 remains the live-validated, aggregate-only monitor.
 
+**CI verification:** [GitHub Actions run 40106289934](https://github.com/amritage/age-n8n-whatsapp-campaign-dispatcher/actions/runs/40106289934) completed successfully for the current AGE 03 reader and tests: `unit-and-safety`, `postgres-report-schema`, and `n8n-import-compatibility` all passed. This is **synthetic test coverage**, not execution in the user's live n8n or verification of actual EspoCRM attempt mappings.
+
 ## What is built
 
 1. **[AGE 03: manual recipient page](../workflows/age-03-chatwoot-evidence-readonly.json)**: Reads Chatwoot account 2, native WhatsApp one-off campaign recipient rows from the same working private PostgreSQL credential as AGE 07. Returns **mobile number, Chatwoot campaign/contact/inbox/recipient row identifiers, provider-message `wamid`, status, Sent/Delivered/Read/Failed timestamps, raw Meta error code/title/message, and update timestamp**. This is a **current-state snapshot**, not a complete provider webhook ledger. It does not need enterprise analytics HTTP endpoints.
