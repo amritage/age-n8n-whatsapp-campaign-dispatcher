@@ -112,6 +112,8 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y postgresql-client
           fi
+      - name: Test AGE 07 SQL against isolated Chatwoot-shaped tables
+        run: node tests/chatwoot-postgres-analytics-sql.test.js
       - name: Apply reporting schema twice (idempotence)
         run: |
           psql -v ON_ERROR_STOP=1 -f sql/reporting-staging.sql
