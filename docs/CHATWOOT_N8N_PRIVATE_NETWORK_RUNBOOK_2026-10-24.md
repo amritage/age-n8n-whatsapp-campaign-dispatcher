@@ -1,5 +1,23 @@
 # Chatwoot → n8n PostgreSQL private networking / rollout log
 
+## Docker network inspection — post-change confirmation (24 October 2026)
+
+**Operator-executed on VPS host**, read-only inspection:
+
+```text
+/n8n-l11w6qi16cakcn9f855wbbk1: au4akmkdy3bkd76n7m0ay0ky coolify l11w6qi16cakcn9f855wbbk1
+/n8n-worker-l11w6qi16cakcn9f855wbbk1: au4akmkdy3bkd76n7m0ay0ky coolify l11w6qi16cakcn9f855wbbk1
+```
+
+**VERIFIED:** both n8n main and worker are currently connected to the Chatwoot private network, the original n8n resource network, and the Coolify shared network. This matches the intended restricted reachability model; Chatwoot's own containers were previously verified healthy and scoped to their resource network.
+
+**Also previously verified:** n8n 2.44.6 UI, worker, task runners, and application PostgreSQL/Redis displayed healthy; AGE 07's Chatwoot PostgreSQL query and validation executed successfully after network changes. Therefore the *current* private connection and application workflow path are operational.
+
+**Not yet proven by this inspection:** that these attachments survive a **future n8n container recreation**. Manual `docker network connect` and Compose declarations can yield the same `docker inspect` output. Persistence depends on the saved Coolify Compose source and regenerated deployable configuration (reviewed earlier) being applied on replacement. Do not restart or redeploy a healthy stack merely to test this, and do not reopen Chatwoot to the shared `coolify` network.
+
+**Operational decision:** current connectivity milestone **CLOSED (working)**; future-recreation persistence **MONITOR / VERIFY ON NEXT PLANNED n8n REDEPLOY**. Separate unfinished product milestones are recipient-level identity mapping, safe EspoCRM writeback, and Data Table persistence. This is not a claim that full campaign reconciliation is deployed.
+
+
 ## Post-change application validation — 24 October 2026, ~20:26–20:27 IST
 
 **Evidence provided:** Two screenshots after the operator's n8n Compose networking edits/review.
