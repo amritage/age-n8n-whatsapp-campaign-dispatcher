@@ -11,4 +11,4 @@ for(const file of ['age-multi-campaign-cycle-controller.json','age-chatwoot-camp
  assert(!j.nodes.some(x=>/n8n-nodes-base.(httpRequest|postgres|mySql|executeCommand)/.test(x.type)), 'No live HTTP/DB nodes permitted yet');
  assert(j.nodes.some(x=>x.type==='n8n-nodes-base.scheduleTrigger'),'Workflow must have schedule');
 }
-console.log('PASS: both n8n importable shells are inactive, inert and JSON valid');
+console.log('PASS: both n8n importable workflows are inactive, fail-closed and never authorize writes');
