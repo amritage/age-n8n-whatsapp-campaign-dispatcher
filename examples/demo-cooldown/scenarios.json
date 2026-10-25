@@ -1,0 +1,538 @@
+{
+  "title": "AGE synthetic marketing cooldown validation",
+  "datasetType": "SYNTHETIC_ONLY",
+  "nowUTC": "2026-10-25T12:00:00Z",
+  "timezoneForDisplay": "Asia/Kolkata",
+  "notes": "Expectations apply ONLY to cooldown helper. Full sender authorization also requires opt-in, suppressions, Meta caps, worker exclusivity, Chatwoot mapping and retry-policy checks.",
+  "cases": [
+    {
+      "id": "D01",
+      "description": "New enrolled phone with no previous marketing attempt",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-new",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Queued",
+          "attempts": []
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "reason": "COOLDOWN_ONLY_PASSED",
+        "nextAllowedAt": null
+      }
+    },
+    {
+      "id": "D02",
+      "description": "Failed attempt ten days ago, 7-day cooldown elapsed",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-old",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-old",
+              "startedAt": "2026-10-15T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "reason": "COOLDOWN_ONLY_PASSED",
+        "nextAllowedAt": "2026-10-22T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "D03",
+      "description": "Exact 7-day boundary is allowed",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-boundary",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-boundary",
+              "startedAt": "2026-10-18T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "reason": "COOLDOWN_ONLY_PASSED",
+        "nextAllowedAt": "2026-10-25T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "D04",
+      "description": "One second before 7-day boundary is still blocked",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-second",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-second",
+              "startedAt": "2026-10-18T12:00:01Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "reason": "GLOBAL_MARKETING_COOLDOWN",
+        "nextAllowedAt": "2026-10-25T12:00:01.000Z"
+      }
+    },
+    {
+      "id": "D05",
+      "description": "A different campaign sent yesterday; later campaign blocked",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-campaign-A",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Delivered",
+          "attempts": [
+            {
+              "attemptId": "att-rec-campaign-A",
+              "startedAt": "2026-10-10T10:00:00Z",
+              "events": []
+            }
+          ]
+        },
+        {
+          "id": "rec-campaign-B",
+          "campaignId": "CMP-B",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-campaign-B",
+              "startedAt": "2026-10-24T11:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "reason": "GLOBAL_MARKETING_COOLDOWN",
+        "nextAllowedAt": "2026-10-31T11:00:00.000Z",
+        "sourceRecipientId": "rec-campaign-B"
+      }
+    },
+    {
+      "id": "D06",
+      "description": "Failed 131049 attempt still counts in cooldown",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-131049",
+          "campaignId": "CMP-C",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-131049",
+              "startedAt": "2026-10-24T12:00:00Z",
+              "events": []
+            }
+          ],
+          "errorCode": "131049"
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "reason": "GLOBAL_MARKETING_COOLDOWN",
+        "nextAllowedAt": "2026-10-31T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "D07",
+      "description": "Unresolved Submitted attempt blocks even after 7 days",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-unknown",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Submitted",
+          "attempts": [
+            {
+              "attemptId": "att-rec-unknown",
+              "startedAt": "2026-10-01T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "reason": "UNRESOLVED_PREVIOUS_ATTEMPT",
+        "nextAllowedAt": null
+      }
+    },
+    {
+      "id": "D08",
+      "description": "Campaign with 14-day gap overrides default 7 days",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 14,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-14days",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-14days",
+              "startedAt": "2026-10-15T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "reason": "GLOBAL_MARKETING_COOLDOWN",
+        "nextAllowedAt": "2026-10-29T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "D09",
+      "description": "Latest failed attempt beats old Read from another campaign",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-read",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Read",
+          "attempts": [
+            {
+              "attemptId": "att-rec-read",
+              "startedAt": "2026-10-01T12:00:00Z",
+              "events": []
+            }
+          ]
+        },
+        {
+          "id": "rec-fail",
+          "campaignId": "CMP-C",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-fail",
+              "startedAt": "2026-10-23T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "reason": "GLOBAL_MARKETING_COOLDOWN",
+        "nextAllowedAt": "2026-10-30T12:00:00.000Z",
+        "sourceRecipientId": "rec-fail"
+      }
+    },
+    {
+      "id": "D10",
+      "description": "Incomplete pagination must error, never authorize",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": false,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-paged",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Queued",
+          "attempts": []
+        }
+      ],
+      "expected": {
+        "error": "MARKETING_COOLDOWN_UNVERIFIED"
+      }
+    },
+    {
+      "id": "D11",
+      "description": "Corrupt CRM history must error, never authorize",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-bad",
+          "campaignId": {},
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Queued",
+          "attempts": [],
+          "corruptHistory": true
+        }
+      ],
+      "expected": {
+        "error": "MARKETING_COOLDOWN_UNVERIFIED"
+      }
+    },
+    {
+      "id": "D12",
+      "description": "Mismatched CRM attempt count must error",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-count",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-count",
+              "startedAt": "2026-10-18T12:00:00Z",
+              "events": []
+            }
+          ],
+          "overrideAttemptCount": 3
+        }
+      ],
+      "expected": {
+        "error": "MARKETING_COOLDOWN_UNVERIFIED"
+      }
+    },
+    {
+      "id": "D13",
+      "description": "Wrong canonical phone owner must error",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-crossphone",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-OTHER",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-crossphone",
+              "startedAt": "2026-10-20T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "error": "MARKETING_COOLDOWN_UNVERIFIED"
+      }
+    },
+    {
+      "id": "D14",
+      "description": "Duplicate CRM recipient rows must error",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-dup",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-dup",
+              "startedAt": "2026-10-20T12:00:00Z",
+              "events": []
+            }
+          ]
+        },
+        {
+          "id": "rec-dup",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-dup",
+              "startedAt": "2026-10-20T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "error": "MARKETING_COOLDOWN_UNVERIFIED"
+      }
+    },
+    {
+      "id": "D15",
+      "description": "Future-dated attempt must error",
+      "phoneMasterId": "PM-001",
+      "now": "2026-10-25T12:00:00Z",
+      "minimumGapDays": 7,
+      "scanComplete": true,
+      "scopedByPhoneMaster": true,
+      "allCampaignsIncluded": true,
+      "historyFull": true,
+      "rows": [
+        {
+          "id": "rec-future",
+          "campaignId": "CMP-A",
+          "phoneNumberId": "PM-001",
+          "channel": "WhatsApp",
+          "status": "Failed",
+          "attempts": [
+            {
+              "attemptId": "att-rec-future",
+              "startedAt": "2026-10-26T12:00:00Z",
+              "events": []
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "error": "MARKETING_COOLDOWN_UNVERIFIED"
+      }
+    }
+  ],
+  "selectionDemo": {
+    "candidates": [
+      {
+        "phoneMasterId": "PM-001",
+        "campaignId": "CMP-B",
+        "recipientId": "RB",
+        "priority": 0
+      },
+      {
+        "phoneMasterId": "PM-001",
+        "campaignId": "CMP-A",
+        "recipientId": "RA",
+        "priority": 5
+      },
+      {
+        "phoneMasterId": "PM-002",
+        "campaignId": "CMP-C",
+        "recipientId": "RC",
+        "priority": 0
+      },
+      {
+        "phoneMasterId": "PM-002",
+        "campaignId": "CMP-D",
+        "recipientId": "RD",
+        "priority": 0
+      }
+    ],
+    "expectedRecipientIds": [
+      "RA",
+      "RC"
+    ]
+  }
+}
