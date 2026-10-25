@@ -67,3 +67,8 @@ Answers should update this file and the relevant BR clauses **before** modifying
 - Exact Chatwoot v4.19 campaign template payload and self-hosted `campaign_analytics` entitlement.
 - Hard per-cycle attempt/spend ceiling, fairness priority, status reconciliation completeness, recovery from unknown Chatwoot POST.
 - Existing D-03 historical 45-second pacing, D-02 delivered-only daily target and P-01/P-02 must be interpreted for **Chatwoot batch** architecture: provider batch completion is asynchronous and cannot guarantee exact delivered-stop or per-message pace.
+
+
+## D-18 (CONFIRMED 25 October 2026): exclusive sender and canonical 7-day cooldown
+
+One serialized n8n marketing dispatcher is the **only** campaign-create sender. EspoCRM canonical Communication Phone Master and linked cross-campaign attempt history are the authoritative cooldown source: at least seven days **between marketing attempts**, including failed attempts, irrespective of campaign. Unresolved attempts block. The separate proposed atomic send ledger is not required in the simple target design, conditional on demonstrably exclusive execution and no competing senders. This does **not** imply the existing EspoCRM extension enforces seven days by itself. The dispatcher must perform a complete verified CRM history check. Existing Chatwoot asynchronous batch versus AGE immediate-attempt mismatch and verified delivery mapping must be resolved before live deployment. The approved runtime safeguards and remaining blockers are in [SINGLE_DISPATCHER_ESPO_COOLDOWN_2026-10-25.md](SINGLE_DISPATCHER_ESPO_COOLDOWN_2026-10-25.md). This supersedes open P-02 and P-07 on architecture/frequency scope; other pending controls remain open.
