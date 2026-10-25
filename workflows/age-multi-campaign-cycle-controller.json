@@ -1,94 +1,181 @@
 {
-  "name": "[DESIGN SHELL - NOT RUNNABLE] AGE - Multi-Campaign Cycle Controller - Design Shell",
+  "name": "[DEV ONLY - READ ONLY] AGE - Unified Multi-Campaign Dispatch Preflight (No Sending)",
   "active": false,
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Kolkata",
-    "saveManualExecutions": true
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "executionTimeout": 600
   },
   "nodes": [
     {
+      "id": "manual-age-multi-preflight",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        150
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "schedule-age-multi-preflight",
+      "name": "Schedule - Every 60 Minutes (Do Not Enable Yet)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        360
+      ],
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "minutes",
-              "minutesInterval": 60
+              "field": "hours",
+              "hoursInterval": 1
             }
           ]
         }
-      },
-      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac01",
-      "name": "Schedule - Every 60 Minutes",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        260,
-        300
-      ]
+      }
     },
     {
+      "id": "crm-age-multi-preflight",
+      "name": "EspoCRM - Read Campaign Configuration",
+      "type": "@traien/n8n-nodes-espocrm.espoCrm",
+      "typeVersion": 1,
+      "position": [
+        240,
+        150
+      ],
       "parameters": {
-        "jsCode": "// INERT BY DESIGN. Integration contracts and provider capabilities are not yet verified.\\n// Do not replace this safety gate without completing docs/ESPOCRM_CHATWOOT_API_CONTRACT.md and acceptance tests.\\nreturn [{json:{mode:'DESIGN_ONLY',canSend:false,reason:'UNVERIFIED_API_ADAPTERS_AND_ATOMIC_LEDGER',workflow:'AGE - Multi-Campaign Cycle Controller - Design Shell',checkedAt:new Date().toISOString()}}];"
+        "resource": "customEntity",
+        "operation": "getAll",
+        "entityType": "Campaign",
+        "returnAll": true,
+        "filterOptions": {
+          "select": "id,name,status,ageTrackingEnabled,ageChannel,ageProvider,ageInboxId,ageTemplateName,ageTemplateLanguage,ageTimeZone,ageWindowStart,ageWindowEnd,ageSundayOff,ageDailyLimit,ageMinGapDays,startDate,endDate"
+        }
       },
-      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac02",
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "chat-age-multi-preflight",
+      "name": "Chatwoot - Read Native Campaigns",
+      "type": "@renatoascencio/n8n-nodes-chatwoot.chatwoot",
+      "typeVersion": 1,
+      "position": [
+        470,
+        150
+      ],
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll"
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "dt-age-multi-preflight",
+      "name": "Data Table - Read Portfolio (Max 51)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        150
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AGE_Portfolio_Control"
+        },
+        "returnAll": false,
+        "limit": 51
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "gate-age-multi-preflight",
       "name": "Design Gate - Never Sends",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        520,
-        300
-      ]
+        950,
+        150
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// AGE multi-campaign READ-ONLY dispatch preflight. Data Tables are observational, NOT atomic reservations.\n// All decisions remain HOLD; no recipient-level authorisation or WhatsApp writes are made.\nconst from=(name)=>$(name).all().map(v=>v.json||{}).filter(v=>Object.keys(v).length);\nconst campaigns=from('EspoCRM - Read Campaign Configuration');\nconst batches=from('Chatwoot - Read Native Campaigns');\nconst portfolios=$input.all().map(v=>v.json||{}).filter(v=>Object.keys(v).length);\nconst errors=[],now=new Date(),nowMs=now.getTime();\nconst bad=x=>x&& (x.error!==undefined||x.httpCode>=400||x.statusCode>=400);\nif(campaigns.some(bad))errors.push('ESPOCRM_READ_ERROR');\nif(batches.some(bad))errors.push('CHATWOOT_READ_ERROR');\nif(portfolios.some(bad))errors.push('PORTFOLIO_TABLE_READ_ERROR');\nif(!campaigns.length)errors.push('NO_CAMPAIGN_RECORDS_OR_EMPTY_SOURCE');\nif(!portfolios.length)errors.push('PORTFOLIO_CONTROL_MISSING');\nif(portfolios.length>=51)errors.push('PORTFOLIO_SCAN_INCOMPLETE');\nconst seenCampaigns=new Set(),seenBatches=new Set(),seenPortfolios=new Set();\nconst validClock=v=>typeof v==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(v);\nconst minute=v=>Number(v.slice(0,2))*60+Number(v.slice(3));\nfunction local(iso,zone) {\n  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:zone,year:'numeric',month:'2-digit',\n    day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'})\n    .formatToParts(new Date(iso));\n  const t=Object.fromEntries(parts.filter(v=>v.type!=='literal').map(v=>[v.type,v.value]));\n  return {day:t.weekday,date:t.year+'-'+t.month+'-'+t.day,minutes:Number(t.hour)*60+Number(t.minute)};\n}\nconst rows=[],relevant=campaigns.filter(c=>c.ageChannel==='WhatsApp' && String(c.ageProvider||'').toLowerCase().includes('chatwoot'));\nfor(const c of relevant) {\n  const reasons=[],id=String(c.id||'');\n  if(!id||seenCampaigns.has(id))reasons.push('DUPLICATE_OR_MISSING_CAMPAIGN_ID');\n  seenCampaigns.add(id);\n  if(c.status!=='Active')reasons.push('CAMPAIGN_NOT_ACTIVE');\n  if(c.ageTrackingEnabled!==true)reasons.push('CAMPAIGN_TRACKING_NOT_ENABLED');\n  if(!/^[1-9]\\d*$/.test(String(c.ageInboxId||'')))reasons.push('INBOX_NOT_CONFIGURED');\n  if(!c.ageTemplateName||!c.ageTemplateLanguage)reasons.push('TEMPLATE_NOT_CONFIGURED');\n  if(!Number.isSafeInteger(c.ageDailyLimit)||c.ageDailyLimit<1)reasons.push('DAILY_TARGET_NOT_CONFIGURED');\n  if(!Number.isSafeInteger(c.ageMinGapDays)||c.ageMinGapDays<0)reasons.push('MIN_GAP_NOT_CONFIGURED');\n  if(!validClock(c.ageWindowStart)||!validClock(c.ageWindowEnd)||\n     (validClock(c.ageWindowStart)&&validClock(c.ageWindowEnd)&&minute(c.ageWindowStart)>=minute(c.ageWindowEnd)))\n    reasons.push('INVALID_CAMPAIGN_WINDOW');\n  if(c.ageSundayOff!==true&&c.ageSundayOff!==false)reasons.push('SUNDAY_POLICY_NOT_CONFIGURED');\n  let localTime=null;\n  try {\n    if(typeof c.ageTimeZone!=='string'||!c.ageTimeZone)throw Error('missing');\n    localTime=local(now.toISOString(),c.ageTimeZone);\n  } catch {reasons.push('INVALID_OR_MISSING_TIMEZONE');}\n  if(localTime) {\n    if(c.startDate&&localTime.date<String(c.startDate).slice(0,10))reasons.push('NOT_STARTED');\n    if(c.endDate&&localTime.date>String(c.endDate).slice(0,10))reasons.push('ENDED');\n    if(c.ageSundayOff===true&&localTime.day==='Sun')reasons.push('SUNDAY_DISABLED');\n    if(validClock(c.ageWindowStart)&&validClock(c.ageWindowEnd)&&\n       (localTime.minutes<minute(c.ageWindowStart)||localTime.minutes>=minute(c.ageWindowEnd)))\n       reasons.push('OUTSIDE_CAMPAIGN_WINDOW');\n  }\n  rows.push({espoCampaignId:id,name:String(c.name||'').slice(0,80),\n    observedStatus:String(c.status||''),windowMatchesNow:reasons.length===0,\n    status:reasons.length?'NOT_WINDOW_READY':'WINDOW_MATCH_ONLY',\n    reasons,recipientEligibilityChecked:false,templateApprovalChecked:false,\n    globalPolicyChecked:false,canSend:false});\n}\nif(relevant.length!==rows.length)errors.push('CAMPAIGN_REVIEW_INCOMPLETE');\nif(rows.some(r=>r.reasons.includes('DUPLICATE_OR_MISSING_CAMPAIGN_ID')))errors.push('INVALID_CAMPAIGN_IDS');\nlet processingWhatsApp=0,completedWhatsApp=0;\nfor(const c of batches){\n  const id=String(c.id??'');\n  if(!id||seenBatches.has(id)){errors.push('INVALID_CHATWOOT_BATCH_IDS');break;}\n  seenBatches.add(id);\n  if(c.campaign_type==='one_off'&&c.inbox?.channel_type==='Channel::Whatsapp'){\n    if(c.campaign_status==='processing')processingWhatsApp++;\n    if(c.campaign_status==='completed')completedWhatsApp++;\n  }\n}\nconst scopes=[];\nfor(const p of portfolios.filter(x=>!bad(x)).slice(0,50)){\n  const reasons=[],id=String(p.portfolioId||'');\n  if(!id||seenPortfolios.has(id))reasons.push('INVALID_OR_DUPLICATE_PORTFOLIO_ID');\n  seenPortfolios.add(id);\n  if(p.masterSendingEnabled!==true)reasons.push('RECORDED_MASTER_DISABLED');\n  if(p.unresolvedCycle!==false||p.activeCycleId)reasons.push('UNRESOLVED_OR_UNKNOWN_CYCLE');\n  if(p.priorCycleHistoryVerified!==true)reasons.push('CYCLE_HISTORY_NOT_VERIFIED');\n  let remainingHours=null;\n  if(p.lastVerifiedBatchCompletedAt){\n    const ended=Date.parse(p.lastVerifiedBatchCompletedAt);\n    if(!Number.isFinite(ended)||ended>nowMs)reasons.push('INVALID_COMPLETION_TIMESTAMP');\n    else{\n      remainingHours=Math.max(0,Math.ceil((26*3600000-(nowMs-ended))/3600000));\n      if(nowMs-ended<26*3600000)reasons.push('GLOBAL_26_HOUR_GAP');\n    }\n  }\n  // Recorded tier is NOT an independently verified Meta rolling-24h usage ledger.\n  reasons.push('PORTFOLIO_CAPACITY_NOT_AUTHORISED_BY_DATA_TABLE');\n  scopes.push({portfolioId:id||null,recordedMaster:p.masterSendingEnabled===true,\n    global26hRemainingHours:remainingHours,holds:reasons,canSend:false});\n}\nconst blockers=[...new Set([...errors,'RECIPIENT_ELIGIBILITY_AND_DYNAMIC_AUDIENCE_NOT_VERIFIED',\n  'IMMUTABLE_BATCH_LABEL_AND_ATTEMPT_MAPPING_NOT_VERIFIED','ATOMIC_RESERVATION_NOT_DEPLOYED',\n  'META_PORTFOLIO_ROLLING_CAPACITY_NOT_VERIFIED','CHATWOOT_CAMPAIGN_POST_NOT_AUTHORISED'])];\nreturn [{json:{mode:'DRY_RUN',decision:'HOLD',checkedAt:now.toISOString(),\n  architecture:'ESPOCRM_N8N_CHATWOOT_NATIVE_META',cadence:'HOURLY_DESIGN',\n  crm:{recordsObserved:campaigns.length,relevantWhatsAppCampaigns:rows.length,\n    windowMatchingNow:rows.filter(r=>r.windowMatchesNow).length,campaigns:rows.slice(0,100),\n    reportPartial:rows.length>100,recipientCountKnown:false},\n  chatwoot:{campaignsObserved:batches.length,processingNativeWhatsApp:processingWhatsApp,\n    completedNativeWhatsApp:completedWhatsApp,fullHistoryProven:false},\n  portfolio:{recordsObserved:portfolios.length,observations:scopes,\n    atomicClaimsPossible:false},\n  blockers,selectedRecipients:0,reservationsCreated:0,chatwootCampaignsCreated:0,\n  crmAttemptsCreated:0,crmEventsWritten:0,canSend:false,\n  nextStep:'Add independently verified CRM eligibility/campaign-attempt bridge, atomic portfolio reservation and Chatwoot batch identity. Never toggle canSend in this workflow.'}}];"
+      }
     },
     {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "combinator": "and",
-          "conditions": [
-            {
-              "id": "gate",
-              "leftValue": "={{ $json.canSend }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ]
-        }
-      },
-      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac03",
-      "name": "LIVE Gate - Always False",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        770,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// This path records the design-only stop reason and DOES NOT mutate Chatwoot or EspoCRM.\\nreturn $input.all();"
-      },
-      "id": "b580f6aa-7ce4-4aac-8348-aab10a10ac04",
+      "id": "stop-age-multi-preflight",
       "name": "Halt Without Writes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1010,
-        400
-      ]
+        1220,
+        150
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Deliberate fail-closed terminal node. No provider/CRM/DB mutation.\\nreturn $input.all();"
+      }
     }
   ],
   "connections": {
-    "Schedule - Every 60 Minutes": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Read Campaign Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 60 Minutes (Do Not Enable Yet)": {
+      "main": [
+        [
+          {
+            "node": "EspoCRM - Read Campaign Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EspoCRM - Read Campaign Configuration": {
+      "main": [
+        [
+          {
+            "node": "Chatwoot - Read Native Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chatwoot - Read Native Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Data Table - Read Portfolio (Max 51)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Table - Read Portfolio (Max 51)": {
       "main": [
         [
           {
@@ -101,18 +188,6 @@
     },
     "Design Gate - Never Sends": {
       "main": [
-        [
-          {
-            "node": "LIVE Gate - Always False",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LIVE Gate - Always False": {
-      "main": [
-        [],
         [
           {
             "node": "Halt Without Writes",
