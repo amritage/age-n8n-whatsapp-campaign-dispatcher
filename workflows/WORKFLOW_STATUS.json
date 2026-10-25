@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-24",
+  "updatedAt": "2026-10-25",
   "sourceOfTruth": true,
   "allFilesInactive": true,
-  "statusMeaning": "USE_NOW means read-only diagnostic import; AGE 03 is a DEV_ONLY sensitive-recipient manual diagnostic, not a live CRM sync or sender",
+  "statusMeaning": "USE_NOW means read-only diagnostics; DEV_ONLY includes AGE 03 private recipient inspector, AGE 08 disconnected reducer, and manual-only multi-campaign preflight. None can send.",
   "counts": {
     "total": 22,
     "useNow": 2,
     "optionalSetup": 1,
-    "developmentOnly": 2,
-    "oldAlternativesAndShells": 17
+    "developmentOnly": 3,
+    "oldAlternativesAndShells": 16
   },
   "workflows": [
     {
@@ -154,10 +154,10 @@
     },
     {
       "file": "age-multi-campaign-cycle-controller.json",
-      "status": "DESIGN_ONLY",
-      "prefix": "[DESIGN SHELL - NOT RUNNABLE]",
-      "purpose": "Unfinished multi-campaign sender design shell",
-      "action": "KEEP ONLY; DO NOT IMPORT OR ACTIVATE"
+      "status": "DEV_ONLY",
+      "prefix": "[DEV ONLY - READ ONLY]",
+      "purpose": "Functional manual-only multi-campaign configuration/window/26h preflight using verified native EspoCRM/Chatwoot node reads plus observational n8n portfolio Data Table; always HOLD, no recipients selected, never a sender",
+      "action": "DEVELOPMENT PILOT ONLY; import inactive, bind existing native API credentials and AGE_Portfolio_Control, execute manually; NEVER activate hourly schedule or treat as atomic reserve"
     },
     {
       "file": "age-unified-six-hour-health-readonly.json",

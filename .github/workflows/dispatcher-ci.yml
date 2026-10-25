@@ -28,6 +28,8 @@ jobs:
           for file in src/*.js scripts/*.js tests/*.js; do node --check "$file"; done
       - name: Verify safe workflow JSON
         run: node tests/workflows-safety.test.js
+      - name: Check new multi-campaign preflight (read only)
+        run: node tests/multi-campaign-preflight-runtime.test.js
       - name: Check multi-campaign planner
         run: node tests/cycle-planner.test.js
       - name: Check 131049 schedule, analytics and read-only connectivity

@@ -47,11 +47,18 @@ for(const entry of manifest.workflows){
     assert.equal(w.nodes.filter(n=>n.type==='n8n-nodes-base.postgres').length,1);
     assert(!w.nodes.some(n=>n.type==='n8n-nodes-base.httpRequest'||n.type==='n8n-nodes-base.dataTable'));
     assert(w.nodes.find(n=>n.type==='n8n-nodes-base.postgres').parameters.query.includes('ct.phone_number'));
+   }else if(entry.file==='age-multi-campaign-cycle-controller.json'){
+    assert(w.nodes.some(n=>n.type==='n8n-nodes-base.manualTrigger'),'Manual trigger required');
+    assert(w.nodes.some(n=>n.type==='n8n-nodes-base.scheduleTrigger'),'Future hourly cadence declared');
+    assert(w.nodes.some(n=>n.name==='Design Gate - Never Sends'),'Fail-closed node required');
+    assert(!w.nodes.some(n=>['n8n-nodes-base.httpRequest','n8n-nodes-base.postgres','n8n-nodes-base.mySql','n8n-nodes-base.webhook'].includes(n.type)),'No sender/DB node');
+    assert(w.nodes.filter(n=>n.type==='n8n-nodes-base.dataTable').every(n=>n.parameters.operation==='get'),'Read-only table');
+    assert(w.nodes.filter(n=>n.type.includes('espocrm')||n.type.includes('chatwoot')).every(n=>n.parameters.operation==='getAll'),'Read-only provider inventory');
   }else throw new Error('Unrecognized DEV_ONLY workflow: '+entry.file);
  }
  count[entry.status]=(count[entry.status]||0)+1;
 }
-assert.equal(count.USE_NOW,2);assert.equal(count.OPTIONAL_SETUP,1);assert.equal(count.DEV_ONLY,2);
-assert.equal(files.length-count.USE_NOW-count.OPTIONAL_SETUP-count.DEV_ONLY,17);
+assert.equal(count.USE_NOW,2);assert.equal(count.OPTIONAL_SETUP,1);assert.equal(count.DEV_ONLY,3);
+assert.equal(files.length-count.USE_NOW-count.OPTIONAL_SETUP-count.DEV_ONLY,16);
 assert(fs.readFileSync(path.join(dir,'README.md'),'utf8').includes('22 workflow JSON files'));
-console.log('PASS: 22/22 workflows labeled, only 2 current read-only scheduled, optional setup, 2 development-only, 17 historic/alternative, all inactive');
+console.log('PASS: 22/22 workflows labeled, only 2 current read-only scheduled, optional setup, 3 development-only, 16 historic/alternative, all inactive');
