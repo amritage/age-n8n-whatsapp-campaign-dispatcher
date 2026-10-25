@@ -1,8 +1,10 @@
+**NEW (25 Oct) — multi-campaign read-only planner available in a development branch.** The existing `age-multi-campaign-cycle-controller.json` design shell is now a functioning **manual dry-run preflight**, not a sender. It reads native EspoCRM campaign configurations, native Chatwoot campaign inventory and the observational AGE portfolio Data Table. It checks scheduling/windows, Sunday, and recorded 26-hour completion gap, but deliberately **cannot select recipients, reserve send capacity, launch Chatwoot or write EspoCRM**. See [pilot guide](../docs/MULTI_CAMPAIGN_PREFLIGHT_2026-10-25.md). Do not activate its hourly schedule. No existing production workflow was changed.
+
 **NEW (24 Oct):** [AGE 03 recipient source-evidence manual pilot](../docs/RECIPIENT_EVIDENCE_PAGING_AND_MATCHING_2026-10-24.md) has replaced its former advanced-SQL version **in the same file**. It is **development-only, inactive, manually paginated, and contains private recipient identifiers**. Do not mistake it for a third active six-hour workflow. AGE 07 remains your proven aggregate monitor.
 
 # AGE workflows: official import status and complete inventory
 
-**There are 22 workflow JSON files. Import only the two current read-only diagnostic workflows, plus one optional setup workflow if you have not already created the Data Tables from CSV.** Two additional workflows are development-only: **AGE 03** is a manual, sensitive recipient-evidence page (requires Chatwoot PostgreSQL SELECT on contacts; do not schedule), and **AGE 08** is a disconnected message-event reducer. The other **17** are superseded versions, advanced SQL/HTTP alternatives, or inert shells.
+**There are 22 workflow JSON files. Import only the two current read-only diagnostic workflows, plus one optional setup workflow if you have not already created the Data Tables from CSV.** Three additional workflows are development-only: **AGE 03** is a manual, sensitive recipient-evidence page (requires Chatwoot PostgreSQL SELECT on contacts; do not schedule), **AGE 08** is a disconnected message-event reducer, and **multi-campaign preflight** is a HOLD-only planner. The other **16** are superseded versions, advanced SQL/HTTP alternatives, or inert shells.
 
 All 22 JSON files are committed with `active: false`. None is a live Meta sender or complete recipient-level EspoCRM delivery reconciler.
 
@@ -20,6 +22,7 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 | Status | File | Instruction |
 |---|---|---|
 | **OPTIONAL SETUP** | [`age-dt-setup-managed-tables.json`](age-dt-setup-managed-tables.json) | One-time Data Tables creator; skip when CSV-created tables already exist |
+| **DEV ONLY — READ ONLY** | [`age-multi-campaign-cycle-controller.json`](age-multi-campaign-cycle-controller.json) | Read-only manual multi-campaign window and global-gap preview; all sends blocked; do not schedule |
 | **DEV ONLY — NOT CONNECTED** | [`age-08-verified-message-evidence-reducer.json`](age-08-verified-message-evidence-reducer.json) | Not deployable alone; requires verified event producer and persistent reconciliation |
 
 **CSV-first option:** Create `AGE_Portfolio_Control` and `AGE_Dispatcher_Events` from the [sample CSV instructions](../examples/n8n-data-tables/README.md), verify column types, then remove demo rows. **Skip** the table-creation JSON if the tables already exist correctly.
@@ -47,7 +50,7 @@ All 22 JSON files are committed with `active: false`. None is a live Meta sender
 | [OLD - AUTO DISCOVERY IN AGE 07] | [`age-chatwoot-find-campaign-ids-readonly.json`](age-chatwoot-find-campaign-ids-readonly.json) | Obsolete manual campaign lookup |
 | [OLD - REPLACED BY AGE 07] | [`age-chatwoot-recipient-report-native.json`](age-chatwoot-recipient-report-native.json) | Earlier native recipient report |
 | [OLD HTTP - DO NOT IMPORT] | [`age-chatwoot-recipient-report-readonly.json`](age-chatwoot-recipient-report-readonly.json) | Earlier generic HTTP recipient report |
-| [DESIGN SHELL - NOT RUNNABLE] | [`age-multi-campaign-cycle-controller.json`](age-multi-campaign-cycle-controller.json) | Unfinished multi-campaign sender design shell |
+| [DEV ONLY - READ ONLY] | [`age-multi-campaign-cycle-controller.json`](age-multi-campaign-cycle-controller.json) | Functional manual read-only preflight; not a sender. Formerly unfinished multi-campaign sender design shell |
 
 ## Rules that prevent confusion
 
