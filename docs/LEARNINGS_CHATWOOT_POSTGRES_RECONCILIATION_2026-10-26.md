@@ -1,6 +1,6 @@
 # Operational learnings: Chatwoot PostgreSQL delivery evidence
 
-Date: 2026-10-26  
+Date: 2026-10-26
 Purpose: preserve implementation and debugging findings that future AGE dispatcher work can reuse. This note contains no customer identifiers, phone numbers, message IDs, credentials, or unredacted execution data.
 
 ## Confirmed evidence and design lessons
@@ -27,7 +27,9 @@ Purpose: preserve implementation and debugging findings that future AGE dispatch
 - Synthetic n8n policy tests on 2026-10-26 confirmed: (a) a LIVE-stage request is rejected with `v5 live sending blocked: native Chatwoot batch creation and recipient-level reconciliation are not ready`; and (b) a valid preflight with master sending disabled returns `runMode=DRY_RUN`, `liveMode=false`, and `nativeCampaignBatchPathReady=false`.
 - A full parent workflow execution was not performed. The execution tool identified only the scheduled trigger and automatic review rejected the proposed manual run because it could not verify a dry-run trigger path. Do not bypass this with an alternate execution route; use synthetic node tests or explicitly configured, reviewed manual triggers.
 - The current n8n instance search found no AGE 03 recipient-reader workflow. AGE 07 exists inactive, but its workflow is unavailable through current MCP access. Do not assume repository commits are automatically imported into n8n.
-- Repository evidence reports a successful manual AGE 07 aggregate run for Chatwoot display campaign 2, `AGE Intro Maharastra`: 910 recipients, 660 delivered-inclusive-of-Read (including 505 Read), 247 Failed, and 3 sent-only. This is one campaign's aggregate snapshot; it is not evidence for `Intro - All India except Ahmedabad`.
+- A new inactive, manual-only, aggregate inventory workflow was created in n8n and manually executed with the existing Postgres credential on 2026-10-26. Its parameterized SELECT returned campaign metadata and aggregate status/error-code counts only; it returned no contact phones, provider IDs, or message content. The test performed zero sends, EspoCRM writes, and Data Table writes. Manual/success execution retention was temporarily enabled to read the aggregate output, then restored to `false`/`none`.
+- The aggregate inventory did not establish an independently verified mapping from the EspoCRM target campaign to a Chatwoot batch. A similar campaign title is not enough to make that link. No additional test message was sent; do not blindly resend after a provider failure.
+- Repository evidence includes a prior manual AGE 07 aggregate run, but it is not evidence for the current EspoCRM target campaign unless the campaign-to-batch mapping is independently verified.
 - Documentation status needs reconciliation: the top-level README and dated analytics report describe the AGE 07 live manual run, while `workflows/README.md` still says AGE 07 was not executed against the live credential. Treat the dated report as the detailed run record and update the stale workflow inventory wording in a reviewed docs change.
 
 ## Production gates still to close
