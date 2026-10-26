@@ -28,6 +28,10 @@ jobs:
           for file in src/*.js scripts/*.js tests/*.js; do node --check "$file"; done
       - name: Verify safe workflow JSON
         run: node tests/workflows-safety.test.js
+      - name: Verify one-dispatcher seven-day EspoCRM cooldown
+        run: node tests/serialized-cooldown.test.js
+      - name: Execute synthetic cooldown demo and assert expected results
+        run: node tests/serialized-cooldown-demo.test.js
       - name: Check multi-campaign planner
         run: node tests/cycle-planner.test.js
       - name: Check 131049 schedule, analytics and read-only connectivity
